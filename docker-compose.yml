@@ -25,6 +25,13 @@ services:
     volumes:
       - minio_data:/data
 
+  processor:
+    build: ./services/processor
+    ports:
+      - "5001:5001"
+    volumes:
+      - ./apps/api/uploads:/uploads:ro
+
 volumes:
   mongodb_data:
   minio_data:

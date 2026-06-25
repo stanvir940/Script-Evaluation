@@ -2,7 +2,7 @@ import mongoose, { Schema, Document, Types } from 'mongoose';
 
 export interface IEvaluation extends Document {
   _id: Types.ObjectId;
-  examCycleId: Types.ObjectId;
+  sessionId: Types.ObjectId;
   assignmentId: Types.ObjectId;
   answerId: Types.ObjectId;
   teacherId: Types.ObjectId;
@@ -15,7 +15,7 @@ export interface IEvaluation extends Document {
 
 const evaluationSchema = new Schema<IEvaluation>(
   {
-    examCycleId: { type: Schema.Types.ObjectId, ref: 'ExamCycle', required: true },
+    sessionId: { type: Schema.Types.ObjectId, ref: 'AdmissionSession', required: true },
     assignmentId: { type: Schema.Types.ObjectId, ref: 'Assignment', required: true },
     answerId: { type: Schema.Types.ObjectId, ref: 'Answer', required: true },
     teacherId: { type: Schema.Types.ObjectId, ref: 'User', required: true },

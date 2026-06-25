@@ -1,9 +1,9 @@
 import mongoose, { Schema, Document, Types } from 'mongoose';
-import { AssignmentStatus } from '@ase/shared-types';
+import { AssignmentStatus } from '@dasems/shared-types';
 
 export interface IAssignment extends Document {
   _id: Types.ObjectId;
-  examCycleId: Types.ObjectId;
+  sessionId: Types.ObjectId;
   answerId: Types.ObjectId;
   teacherId: Types.ObjectId;
   slot: number;
@@ -11,7 +11,6 @@ export interface IAssignment extends Document {
   draftMark?: number;
   draftComment?: string;
   claimedAt?: Date;
-  claimedUntil?: Date;
   submittedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
@@ -19,19 +18,18 @@ export interface IAssignment extends Document {
 
 const assignmentSchema = new Schema<IAssignment>(
   {
-    examCycleId: { type: Schema.Types.ObjectId, ref: 'ExamCycle', required: true },
+    sessionId: { type: Schema.Types.ObjectId, ref: 'AdmissionSession', required: true },
     answerId: { type: Schema.Types.ObjectId, ref: 'Answer', required: true },
     teacherId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     slot: { type: Number, required: true, min: 1, max: 3 },
     status: {
       type: String,
-      enum: ['PENDING', 'IN_PROGRESS', 'SUBMITTED', 'SKIPPED'],
+      enum: ['PENDING', 'IN_PROGRESS', 'SUBMITTED'],
       default: 'PENDING',
     },
     draftMark: Number,
     draftComment: String,
     claimedAt: Date,
-    claimedUntil: Date,
     submittedAt: Date,
   },
   { timestamps: true }

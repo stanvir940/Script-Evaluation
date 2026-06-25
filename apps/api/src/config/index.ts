@@ -9,5 +9,14 @@ export const config = {
   jwtAccessExpiry: process.env.JWT_ACCESS_EXPIRY || '15m',
   jwtRefreshExpiry: process.env.JWT_REFRESH_EXPIRY || '7d',
   corsOrigin: process.env.CORS_ORIGIN || 'http://localhost:5173',
-  escalationThreshold: parseInt(process.env.ESCALATION_THRESHOLD || '3', 10),
+  redisUrl: process.env.REDIS_URL || 'redis://localhost:6379',
+  processorUrl: process.env.PROCESSOR_URL || 'http://localhost:5001',
+  cloudinary: {
+    cloudName: process.env.CLOUDINARY_CLOUD_NAME || '',
+    apiKey: process.env.CLOUDINARY_API_KEY || '',
+    apiSecret: process.env.CLOUDINARY_API_SECRET || '',
+    folder: process.env.CLOUDINARY_FOLDER || 'dasems',
+  },
+  uploadsDir: process.env.UPLOADS_DIR || 'uploads',
+  useCloudinary: Boolean(process.env.CLOUDINARY_CLOUD_NAME),
 };

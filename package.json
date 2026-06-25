@@ -1,17 +1,15 @@
 {
-  "name": "admission-script-evaluation",
+  "name": "dasems",
   "version": "1.0.0",
   "private": true,
-  "workspaces": [
-    "apps/*",
-    "packages/*"
-  ],
+  "workspaces": ["apps/*", "packages/*"],
   "scripts": {
-    "dev": "concurrently \"npm run dev -w @ase/api\" \"npm run dev -w @ase/web\"",
-    "dev:api": "npm run dev -w @ase/api",
-    "dev:web": "npm run dev -w @ase/web",
-    "build": "npm run build -w @ase/shared-types && npm run build -w @ase/api && npm run build -w @ase/web",
-    "seed": "npm run seed -w @ase/api"
+    "dev": "concurrently \"npm run dev -w @dasems/api\" \"npm run dev -w @dasems/web\" \"npm run dev:processor\"",
+    "dev:api": "npm run dev -w @dasems/api",
+    "dev:web": "npm run dev -w @dasems/web",
+    "dev:processor": "cd services/processor && python3 -m uvicorn main:app --reload --port 5001",
+    "build": "npm run build -w @dasems/shared-types && npm run build -w @dasems/api && npm run build -w @dasems/web",
+    "seed": "npm run seed -w @dasems/api"
   },
   "devDependencies": {
     "concurrently": "^9.1.2"

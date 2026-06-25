@@ -1,5 +1,5 @@
 import mongoose, { Schema, Document, Types } from 'mongoose';
-import { UserRole } from '@ase/shared-types';
+import { UserRole } from '@dasems/shared-types';
 
 export interface IUser extends Document {
   _id: Types.ObjectId;
@@ -8,7 +8,8 @@ export interface IUser extends Document {
   passwordHash: string;
   name: string;
   role: UserRole;
-  subjects: Types.ObjectId[];
+  subjectIds: Types.ObjectId[];
+  departmentIds: Types.ObjectId[];
   isActive: boolean;
   lastLoginAt?: Date;
   createdAt: Date;
@@ -23,10 +24,11 @@ const userSchema = new Schema<IUser>(
     name: { type: String, required: true },
     role: {
       type: String,
-      enum: ['SUPER_ADMIN', 'TEACHER', 'HEAD_EXAMINER'],
+      enum: ['SUPER_ADMIN', 'HEAD_EXAMINER', 'TEACHER'],
       required: true,
     },
-    subjects: [{ type: Schema.Types.ObjectId, ref: 'Subject' }],
+    subjectIds: [{ type: Schema.Types.ObjectId, ref: 'Subject' }],
+    departmentIds: [{ type: Schema.Types.ObjectId, ref: 'Department' }],
     isActive: { type: Boolean, default: true },
     lastLoginAt: Date,
   },

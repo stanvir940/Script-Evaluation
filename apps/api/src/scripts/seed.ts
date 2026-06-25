@@ -1,178 +1,271 @@
-import bcrypt from 'bcryptjs';
-import dotenv from 'dotenv';
-import { connectDatabase, disconnectDatabase } from '../lib/db';
+import bcrypt from "bcryptjs";
+import dotenv from "dotenv";
+import { Types } from "mongoose";
+import { connectDatabase, disconnectDatabase } from "../lib/db";
+import mongoose from "mongoose";
 import {
   User,
+  Institution,
+  AdmissionExam,
+  AdmissionSession,
+  Department,
   Subject,
-  ExamCycle,
-  QuestionPaper,
-  Script,
+  Student,
   Answer,
   Assignment,
-} from '../models';
+  Evaluation,
+} from "../models";
+import { seedQuestionsForSession } from "../lib/processor";
+import { assignTeachersToAnswer } from "../lib/reconciliation";
+import { saveProcessedImage } from "../lib/storage";
+import { Question } from "../models/Question";
 
 dotenv.config();
 
-const SAMPLE_QUESTIONS = [
-  {
-    questionNumber: 1,
-    text: 'A body of mass 2 kg moves on a frictionless horizontal surface. If a force of 10 N is applied for 5 seconds, calculate the final velocity.',
-    maxMarks: 10,
-    rubric: '• Correct formula (F=ma): 2 marks\n• Substitution: 3 marks\n• Final answer with unit: 3 marks\n• Working shown clearly: 2 marks',
-    modelAnswer: 'a = F/m = 10/2 = 5 m/s²\nv = u + at = 0 + 5×5 = 25 m/s',
-  },
-  {
-    questionNumber: 2,
-    text: 'Define Newton\'s Third Law of Motion and give one practical example.',
-    maxMarks: 8,
-    rubric: '• Correct definition: 4 marks\n• Valid example: 2 marks\n• Clear explanation: 2 marks',
-    modelAnswer: 'For every action, there is an equal and opposite reaction. Example: When we walk, we push the ground backward and the ground pushes us forward.',
-  },
-  {
-    questionNumber: 3,
-    text: 'A car travels 120 km in 2 hours. Calculate its average speed in m/s.',
-    maxMarks: 6,
-    rubric: '• Speed formula: 2 marks\n• Unit conversion: 2 marks\n• Correct answer: 2 marks',
-    modelAnswer: 'Speed = 120/2 = 60 km/h = 60 × (1000/3600) = 16.67 m/s',
-  },
-];
+async function createAnswerImage(
+  sessionId: string,
+  sCode: string,
+  qNum: number,
+) {
+  const svg = Buffer.from(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="400"><rect width="800" height="400" fill="#fff"/><text x="400" y="200" text-anchor="middle" font-size="20">${sCode} - Q${qNum}</text></svg>`,
+  );
+  return saveProcessedImage(sessionId, sCode, qNum, svg);
+}
 
 async function seed() {
   await connectDatabase();
 
-  console.log('Clearing existing data...');
-  await Promise.all([
-    User.deleteMany({}),
-    Subject.deleteMany({}),
-    ExamCycle.deleteMany({}),
-    QuestionPaper.deleteMany({}),
-    Script.deleteMany({}),
-    Answer.deleteMany({}),
-    Assignment.deleteMany({}),
-  ]);
-
-  const passwordHash = await bcrypt.hash('password123', 12);
-
-  console.log('Creating subjects...');
-  const subjects = await Subject.insertMany([
-    { code: 'PHY', name: 'Physics' },
-    { code: 'CHE', name: 'Chemistry' },
-    { code: 'MAT', name: 'Mathematics' },
-    { code: 'ENG', name: 'English' },
-  ]);
-
-  const physics = subjects.find((s) => s.code === 'PHY')!;
-
-  console.log('Creating users...');
-  const [admin, headExaminer, teacher1, teacher2, teacher3] = await User.insertMany([
-    {
-      employeeId: 'ADMIN001',
-      name: 'System Administrator',
-      passwordHash,
-      role: 'SUPER_ADMIN',
-      subjects: [],
-    },
-    {
-      employeeId: 'HEAD001',
-      name: 'Prof. Dr. Karim',
-      passwordHash,
-      role: 'HEAD_EXAMINER',
-      subjects: [],
-    },
-    {
-      employeeId: 'TCH001',
-      name: 'Dr. Rahman',
-      passwordHash,
-      role: 'TEACHER',
-      subjects: [physics._id],
-    },
-    {
-      employeeId: 'TCH002',
-      name: 'Dr. Ahmed',
-      passwordHash,
-      role: 'TEACHER',
-      subjects: [physics._id],
-    },
-    {
-      employeeId: 'TCH003',
-      name: 'Dr. Khan',
-      passwordHash,
-      role: 'TEACHER',
-      subjects: [physics._id],
-    },
-  ]);
-
-  console.log('Creating exam cycle...');
-  const examCycle = await ExamCycle.create({
-    name: 'Admission Test 2026',
-    year: 2026,
-    status: 'ACTIVE',
-    escalationThreshold: 3,
-    createdBy: admin._id,
-  });
-
-  console.log('Creating question paper...');
-  const questionPaper = await QuestionPaper.create({
-    examCycleId: examCycle._id,
-    subjectId: physics._id,
-    version: 1,
-    questions: SAMPLE_QUESTIONS,
-    totalMarks: SAMPLE_QUESTIONS.reduce((sum, q) => sum + q.maxMarks, 0),
-    publishedAt: new Date(),
-  });
-
-  console.log('Creating scripts and answers...');
-  const teachers = [teacher1, teacher2, teacher3];
-  const scriptCount = 15;
-
-  for (let i = 1; i <= scriptCount; i++) {
-    const script = await Script.create({
-      examCycleId: examCycle._id,
-      rollNumber: `2026-${String(i).padStart(4, '0')}`,
-      candidateId: `A-${4820 + i}`,
-      processingStatus: 'READY',
-      pageCount: 3,
-    });
-
-    for (const question of SAMPLE_QUESTIONS) {
-      const answer = await Answer.create({
-        examCycleId: examCycle._id,
-        scriptId: script._id,
-        subjectId: physics._id,
-        questionPaperId: questionPaper._id,
-        questionNumber: question.questionNumber,
-        maxMarks: question.maxMarks,
-        answerImageKey: `placeholder/Q${question.questionNumber}-Script-${script.candidateId}`,
-        pageNumber: question.questionNumber,
-        status: 'ASSIGNED',
-        evaluationCount: 0,
-      });
-
-      for (let slot = 1; slot <= 3; slot++) {
-        const teacher = teachers[slot - 1];
-        await Assignment.create({
-          examCycleId: examCycle._id,
-          answerId: answer._id,
-          teacherId: teacher._id,
-          slot,
-          status: 'PENDING',
-        });
+  console.log("Clearing database...");
+  const collections = [
+    "users",
+    "institutions",
+    "admissionexams",
+    "admissionsessions",
+    "departments",
+    "subjects",
+    "questions",
+    "students",
+    "scripts",
+    "answers",
+    "assignments",
+    "evaluations",
+    "annotationlayers",
+    "adjudications",
+    "results",
+    "auditlogs",
+    "refreshtokens",
+  ];
+  const db = mongoose.connection.db;
+  if (db) {
+    for (const name of collections) {
+      try {
+        await db.collection(name).deleteMany({});
+      } catch {
+        /* ignore */
       }
     }
   }
 
-  console.log('\nSeed completed successfully!\n');
-  console.log('Login credentials (password: password123):');
-  console.log('  Super Admin:     ADMIN001');
-  console.log('  Head Examiner:   HEAD001');
-  console.log('  Teacher (Phy):   TCH001, TCH002, TCH003');
-  console.log(`\nCreated ${scriptCount} scripts with ${scriptCount * SAMPLE_QUESTIONS.length} answers`);
-  console.log(`Each answer assigned to 3 teachers (${scriptCount * SAMPLE_QUESTIONS.length * 3} assignments for TCH001)`);
+  const passwordHash = await bcrypt.hash("password123", 12);
+
+  const institution = await Institution.create({ name: "KUET", code: "KUET" });
+  const departments = await Department.insertMany([
+    { code: "ENG", name: "Engineering Faculty" },
+    { code: "SCI", name: "Science Faculty" },
+  ]);
+  const subjects = await Subject.insertMany([
+    { code: "PHY", name: "Physics", departmentId: departments[0]._id },
+    { code: "CHE", name: "Chemistry", departmentId: departments[0]._id },
+    { code: "MAT", name: "Mathematics", departmentId: departments[0]._id },
+    { code: "ENG", name: "English", departmentId: departments[1]._id },
+  ]);
+  const physics = subjects.find((s) => s.code === "PHY")!;
+
+  const admin = await User.create({
+    employeeId: "ADMIN001",
+    name: "System Administrator",
+    passwordHash,
+    role: "SUPER_ADMIN",
+    subjectIds: [],
+    departmentIds: [],
+  });
+
+  const [headExaminer, t1, t2, t3] = await User.insertMany([
+    {
+      employeeId: "HEAD001",
+      name: "Prof. Dr. Karim",
+      passwordHash,
+      role: "HEAD_EXAMINER",
+      subjectIds: [],
+      departmentIds: [],
+    },
+    {
+      employeeId: "TCH001",
+      name: "Dr. Rahman",
+      passwordHash,
+      role: "TEACHER",
+      subjectIds: [physics._id],
+      departmentIds: [departments[0]._id],
+    },
+    {
+      employeeId: "TCH002",
+      name: "Dr. Ahmed",
+      passwordHash,
+      role: "TEACHER",
+      subjectIds: [physics._id],
+      departmentIds: [departments[0]._id],
+    },
+    {
+      employeeId: "TCH003",
+      name: "Dr. Khan",
+      passwordHash,
+      role: "TEACHER",
+      subjectIds: [physics._id],
+      departmentIds: [departments[0]._id],
+    },
+  ]);
+
+  const exam = await AdmissionExam.create({
+    name: "Undergraduate Admission Test 2026",
+    institutionId: institution._id,
+    year: 2026,
+    status: "ACTIVE",
+    createdBy: admin._id,
+  });
+
+  const session = await AdmissionSession.create({
+    examId: exam._id,
+    name: "Admission Test Session 2026",
+    status: "ACTIVE",
+    moderationThreshold: 3,
+    sCodePrefix: "KUET-2026",
+    questionMapping: [
+      {
+        subjectId: subjects[0]._id,
+        subjectCode: "PHY",
+        startQuestion: 1,
+        endQuestion: 10,
+      },
+      {
+        subjectId: subjects[1]._id,
+        subjectCode: "CHE",
+        startQuestion: 11,
+        endQuestion: 20,
+      },
+      {
+        subjectId: subjects[2]._id,
+        subjectCode: "MAT",
+        startQuestion: 21,
+        endQuestion: 30,
+      },
+      {
+        subjectId: subjects[3]._id,
+        subjectCode: "ENG",
+        startQuestion: 31,
+        endQuestion: 35,
+      },
+    ],
+    createdBy: admin._id,
+  });
+
+  await seedQuestionsForSession(session._id.toString());
+
+  // Create demo students (PII admin-only; teachers see s_code only)
+  const students = [];
+  for (let i = 1; i <= 5; i++) {
+    const sCode = `KUET-2026-${String(i).padStart(6, "0")}`;
+    students.push(
+      await Student.create({
+        sessionId: session._id,
+        roll: `2026-${String(i).padStart(4, "0")}`,
+        name: `Student ${i}`,
+        faculty: "Engineering",
+        departmentId: departments[0]._id,
+        sCode,
+        processingStatus: "READY",
+      }),
+    );
+  }
+
+  // Create answers for Physics Q1-Q3 only (demo subset)
+  const phyQuestions = await Question.find({
+    sessionId: session._id,
+    subjectId: physics._id,
+    questionNumber: { $lte: 3 },
+  });
+
+  for (const student of students) {
+    for (const question of phyQuestions) {
+      const img = await createAnswerImage(
+        session._id.toString(),
+        student.sCode,
+        question.questionNumber,
+      );
+      const answer = await Answer.create({
+        sessionId: session._id,
+        scriptId: new Types.ObjectId(),
+        studentId: student._id,
+        sCode: student.sCode,
+        subjectId: physics._id,
+        questionId: question._id,
+        questionNumber: question.questionNumber,
+        maxMarks: question.maxMarks,
+        imageKey: img.key,
+        imageUrl: img.url,
+        pageNumber: 1,
+        boundingBox: { x: 0, y: 0, width: 800, height: 400 },
+        resolution: { width: 800, height: 400 },
+        status: "UNASSIGNED",
+      });
+      await assignTeachersToAnswer(answer._id, session._id, physics._id);
+    }
+  }
+
+  // Pre-submit conflicting evaluations on first answer for moderation demo
+  const demoAnswer = await Answer.findOne({
+    sCode: students[0].sCode,
+    questionNumber: 1,
+  });
+  if (demoAnswer) {
+    const assignments = await Assignment.find({
+      answerId: demoAnswer._id,
+    }).sort({ slot: 1 });
+    const marks = [8, 3, 7];
+    for (let i = 0; i < 3; i++) {
+      const a = assignments[i];
+      await Evaluation.create({
+        sessionId: session._id,
+        assignmentId: a._id,
+        answerId: demoAnswer._id,
+        teacherId: a.teacherId,
+        slot: a.slot,
+        mark: marks[i],
+        comment: `Evaluation slot ${a.slot}`,
+      });
+      a.status = "SUBMITTED";
+      a.submittedAt = new Date();
+      await a.save();
+    }
+    demoAnswer.evaluationCount = 3;
+    demoAnswer.status = "AWAITING_RECONCILIATION";
+    await demoAnswer.save();
+    const { reconcileAnswer } = await import("../lib/reconciliation");
+    await reconcileAnswer(demoAnswer._id);
+  }
+
+  console.log("\n✓ DASEMS full seed completed (Phases 1-6 demo data)\n");
+  console.log("Credentials (password: password123):");
+  console.log("  ADMIN001 | HEAD001 | TCH001 | TCH002 | TCH003");
+  console.log(`\nSession ID: ${session._id.toString()}`);
+  console.log(
+    "5 students, Physics Q1-Q3 answers, 1 escalated case for moderation demo",
+  );
 
   await disconnectDatabase();
 }
 
 seed().catch((err) => {
-  console.error('Seed failed:', err);
+  console.error("Seed failed:", err);
   process.exit(1);
 });

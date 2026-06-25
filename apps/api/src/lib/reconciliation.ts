@@ -4,12 +4,9 @@ import {
   Assignment,
   Evaluation,
   Adjudication,
-  QuestionPaper,
-  Script,
-  Subject,
-  ExamCycle,
+  AdmissionSession,
+  User,
 } from '../models';
-import { config } from '../config';
 
 export async function reconcileAnswer(answerId: Types.ObjectId): Promise<void> {
   const evaluations = await Evaluation.find({ answerId }).sort({ slot: 1 });
@@ -20,8 +17,8 @@ export async function reconcileAnswer(answerId: Types.ObjectId): Promise<void> {
   const answer = await Answer.findById(answerId);
   if (!answer) return;
 
-  const examCycle = await ExamCycle.findById(answer.examCycleId);
-  const threshold = examCycle?.escalationThreshold ?? config.escalationThreshold;
+  const session = await AdmissionSession.findById(answer.sessionId);
+  const threshold = session?.moderationThreshold ?? 3;
 
   if (spread > threshold) {
     answer.status = 'ESCALATED';
@@ -32,7 +29,7 @@ export async function reconcileAnswer(answerId: Types.ObjectId): Promise<void> {
     await Adjudication.findOneAndUpdate(
       { answerId },
       {
-        examCycleId: answer.examCycleId,
+        sessionId: answer.sessionId,
         answerId,
         evaluationIds: evaluations.map((e) => e._id),
         markSpread: spread,
@@ -42,160 +39,65 @@ export async function reconcileAnswer(answerId: Types.ObjectId): Promise<void> {
     );
   } else {
     const average = marks.reduce((a, b) => a + b, 0) / marks.length;
-    const rounded = Math.round(average * 100) / 100;
-
     answer.status = 'FINALIZED';
-    answer.finalMark = rounded;
+    answer.finalMark = Math.round(average * 100) / 100;
     answer.finalizationMethod = 'AVERAGE';
     answer.finalizedAt = new Date();
     await answer.save();
   }
 }
 
-export function getAnswerImageUrl(imageKey: string): string {
-  if (imageKey.startsWith('http')) return imageKey;
-  return `/api/v1/assets/${encodeURIComponent(imageKey)}`;
-}
-
-export async function buildEvaluationWorkspace(
-  assignmentId: string,
-  teacherId: string
-) {
-  const assignment = await Assignment.findOne({
-    _id: assignmentId,
-    teacherId: new Types.ObjectId(teacherId),
+export async function assignTeachersToAnswer(
+  answerId: Types.ObjectId,
+  sessionId: Types.ObjectId,
+  subjectId: Types.ObjectId
+): Promise<void> {
+  const teachers = await User.find({
+    role: 'TEACHER',
+    isActive: true,
+    subjectIds: subjectId,
   });
 
-  if (!assignment) return null;
+  if (teachers.length < 3) {
+    console.warn(`Not enough teachers for subject ${subjectId.toString()}`);
+    return;
+  }
 
-  const answer = await Answer.findById(assignment.answerId);
-  if (!answer) return null;
+  const workloads = await Promise.all(
+    teachers.map(async (t) => ({
+      teacher: t,
+      count: await Assignment.countDocuments({ teacherId: t._id, status: { $ne: 'SUBMITTED' } }),
+    }))
+  );
 
-  const [subject, paper, script] = await Promise.all([
-    Subject.findById(answer.subjectId),
-    QuestionPaper.findById(answer.questionPaperId),
-    Script.findById(answer.scriptId),
-  ]);
+  workloads.sort((a, b) => a.count - b.count);
+  const selected = workloads.slice(0, 3).map((w) => w.teacher);
 
-  const question = paper?.questions.find((q) => q.questionNumber === answer.questionNumber);
-  if (!subject || !question || !script) return null;
+  for (let slot = 0; slot < 3; slot++) {
+    await Assignment.create({
+      sessionId,
+      answerId,
+      teacherId: selected[slot]._id,
+      slot: slot + 1,
+      status: 'PENDING',
+    });
+  }
 
-  const [assigned, completed] = await Promise.all([
-    Assignment.countDocuments({ teacherId, examCycleId: assignment.examCycleId }),
-    Assignment.countDocuments({
-      teacherId,
-      examCycleId: assignment.examCycleId,
-      status: 'SUBMITTED',
-    }),
-  ]);
-
-  const currentIndex = completed + (assignment.status === 'SUBMITTED' ? 0 : 1);
-
-  return {
-    assignmentId: assignment._id.toString(),
-    answerId: answer._id.toString(),
-    questionNumber: answer.questionNumber,
-    subject: { id: subject._id.toString(), code: subject.code, name: subject.name },
-    maxMarks: answer.maxMarks,
-    questionText: question.text,
-    rubric: question.rubric,
-    modelAnswer: question.modelAnswer,
-    answerImageUrl: getAnswerImageUrl(answer.answerImageKey),
-    candidateId: script.candidateId,
-    pageNumber: answer.pageNumber,
-    draftMark: assignment.draftMark,
-    draftComment: assignment.draftComment,
-    progress: {
-      assigned,
-      completed,
-      remaining: assigned - completed,
-      current: Math.min(currentIndex, assigned),
-    },
-  };
+  await Answer.findByIdAndUpdate(answerId, { status: 'ASSIGNED' });
 }
 
-export async function getTeacherStats(teacherId: string, examCycleId?: string) {
-  const filter: Record<string, unknown> = { teacherId: new Types.ObjectId(teacherId) };
-  if (examCycleId) filter.examCycleId = new Types.ObjectId(examCycleId);
+export async function assignAllUnassigned(sessionId: string): Promise<number> {
+  const answers = await Answer.find({
+    sessionId: new Types.ObjectId(sessionId),
+    status: 'UNASSIGNED',
+  });
 
-  const todayStart = new Date();
-  todayStart.setHours(0, 0, 0, 0);
+  for (const answer of answers) {
+    const existing = await Assignment.countDocuments({ answerId: answer._id });
+    if (existing === 0) {
+      await assignTeachersToAnswer(answer._id, answer.sessionId, answer.subjectId);
+    }
+  }
 
-  const [assigned, completed, evaluatedToday] = await Promise.all([
-    Assignment.countDocuments(filter),
-    Assignment.countDocuments({ ...filter, status: 'SUBMITTED' }),
-    Evaluation.countDocuments({
-      teacherId: new Types.ObjectId(teacherId),
-      submittedAt: { $gte: todayStart },
-    }),
-  ]);
-
-  return {
-    assigned,
-    completed,
-    remaining: assigned - completed,
-    evaluatedToday,
-  };
-}
-
-export async function getDashboardOverview(examCycleId?: string) {
-  const filter: Record<string, unknown> = {};
-  if (examCycleId) filter.examCycleId = new Types.ObjectId(examCycleId);
-
-  const [totalAnswers, finalized, escalated, pendingAdjudication, inProgress] =
-    await Promise.all([
-      Answer.countDocuments(filter),
-      Answer.countDocuments({ ...filter, status: 'FINALIZED' }),
-      Answer.countDocuments({ ...filter, status: 'ESCALATED' }),
-      Adjudication.countDocuments({ ...filter, status: 'PENDING' }),
-      Answer.countDocuments({
-        ...filter,
-        status: { $in: ['ASSIGNED', 'PARTIALLY_EVALUATED', 'AWAITING_RECONCILIATION'] },
-      }),
-    ]);
-
-  return { totalAnswers, finalized, escalated, pendingAdjudication, inProgress };
-}
-
-export async function buildAdjudicationCase(adjudicationId: string) {
-  const adjudication = await Adjudication.findById(adjudicationId);
-  if (!adjudication) return null;
-
-  const answer = await Answer.findById(adjudication.answerId);
-  if (!answer) return null;
-
-  const [subject, paper, script, evaluations] = await Promise.all([
-    Subject.findById(answer.subjectId),
-    QuestionPaper.findById(answer.questionPaperId),
-    Script.findById(answer.scriptId),
-    Evaluation.find({ _id: { $in: adjudication.evaluationIds } }).populate('teacherId', 'name'),
-  ]);
-
-  const question = paper?.questions.find((q) => q.questionNumber === answer.questionNumber);
-  if (!subject || !question || !script) return null;
-
-  const examCycle = await ExamCycle.findById(answer.examCycleId);
-
-  return {
-    id: adjudication._id.toString(),
-    answerId: answer._id.toString(),
-    questionNumber: answer.questionNumber,
-    subject: { code: subject.code, name: subject.name },
-    maxMarks: answer.maxMarks,
-    questionText: question.text,
-    rubric: question.rubric,
-    modelAnswer: question.modelAnswer,
-    answerImageUrl: getAnswerImageUrl(answer.answerImageKey),
-    candidateId: script.candidateId,
-    markSpread: adjudication.markSpread,
-    threshold: examCycle?.escalationThreshold ?? config.escalationThreshold,
-    evaluations: evaluations.map((e) => {
-      const teacher = e.teacherId as unknown as { name: string };
-      return {
-        teacherName: teacher.name,
-        mark: e.mark,
-        comment: e.comment,
-      };
-    }),
-  };
+  return answers.length;
 }

@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import { UserRole } from '@ase/shared-types';
+import { UserRole } from '@dasems/shared-types';
 import { config } from '../config';
 
 export interface JwtPayload {

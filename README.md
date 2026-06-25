@@ -1,99 +1,71 @@
-# Admission Script Evaluation System
+# DASEMS — Digital Admission Script Evaluation & Moderation System
 
-Production-ready web application for university admission test script evaluation with triple-blind marking and head examiner adjudication.
+Full-stack university admission script evaluation platform (Phases 1–6).
 
 ## Stack
 
-- **Frontend:** React 18, TypeScript, Vite, Tailwind CSS, TanStack Query
-- **Backend:** Node.js, Express, TypeScript, MongoDB, JWT
-- **Infrastructure:** Docker Compose (MongoDB, Redis, MinIO)
+| Layer | Technology |
+|-------|------------|
+| Frontend | React, Vite, TypeScript, Tailwind, Redux Toolkit, React Query, React Konva |
+| Backend | Node.js, Express, MongoDB, JWT |
+| Processing | Python FastAPI, PyMuPDF, Pillow |
+| Queue | Redis (optional, inline fallback) |
+| Storage | Local filesystem (Cloudinary-ready config) |
 
 ## Quick Start
 
-### Prerequisites
-
-- Node.js 20+
-- Docker & Docker Compose (for MongoDB)
-
-### 1. Start database
-
 ```bash
-docker compose up -d mongodb
-```
+# Start infrastructure
+docker compose up -d mongodb redis
 
-### 2. Install dependencies
+# Optional: Python processor
+cd services/processor && pip install -r requirements.txt
+uvicorn main:app --reload --port 5001
 
-```bash
+# Install & seed
 npm install
-```
-
-### 3. Seed demo data
-
-```bash
 npm run seed
-```
 
-### 4. Start development servers
-
-```bash
+# Run API + Web (+ processor if configured)
 npm run dev
 ```
 
-- **Frontend:** http://localhost:5173
-- **API:** http://localhost:4000
-- **Health check:** http://localhost:4000/health
+- **Web:** http://localhost:5173  
+- **API:** http://localhost:4000/health  
+- **Processor:** http://localhost:5001/health  
 
-## Demo Login Credentials
+## Demo Credentials
 
-Password for all accounts: `password123`
+Password: `password123`
 
-| Role | Employee ID |
-|------|-------------|
+| Role | ID |
+|------|-----|
 | Super Admin | ADMIN001 |
 | Head Examiner | HEAD001 |
-| Teacher (Physics) | TCH001, TCH002, TCH003 |
+| Teacher | TCH001, TCH002, TCH003 |
 
-## Project Structure
+After seed, copy the **Session ID** from terminal output for admin pages (Question Bank, Students, Results).
 
-```
-admission-script-evaluation/
-├── apps/
-│   ├── api/          # Express REST API
-│   └── web/          # React frontend
-├── packages/
-│   └── shared-types/ # Shared TypeScript types
-└── docker-compose.yml
-```
+## Phase Coverage
 
-## Key Features
+| Phase | Features |
+|-------|----------|
+| 1 | Auth, RBAC, sessions, departments, subjects, users, audit |
+| 2 | Question bank, student upload (s_code), PDF upload API |
+| 3 | Python PDF processor, answer cropping pipeline |
+| 4 | Assignment engine, teacher dashboard, evaluation + Konva annotations |
+| 5 | Three-examiner reconciliation, head examiner moderation |
+| 6 | Results sync, CSV export, merit list, analytics dashboard |
 
-- JWT authentication with role-based access control
-- Teacher evaluation workspace (split-pane: rubric + answer image)
-- Triple evaluation with automatic reconciliation
-- Escalation to Head Examiner when mark spread > 3
-- Progress dashboards for teachers, head examiners, and admins
-- Keyboard shortcuts (N, S, Z, ?)
-- Audit logging for evaluation submissions
+## Key Flows
 
-## API Endpoints
+1. **Admin** creates session → students get anonymous `s_code` (e.g. `KUET-2026-000001`)
+2. **Admin** uploads PDFs → processor crops answers → 3 teachers assigned per answer
+3. **Teacher** evaluates blind (s_code only) with annotation layer + marks
+4. **System** auto-averages or escalates if mark spread > threshold
+5. **Head Examiner** reviews escalated cases with layer comparison
+6. **Admin** exports results mapping s_code → roll → marks
 
-| Method | Path | Description |
-|--------|------|-------------|
-| POST | `/api/v1/auth/login` | Login |
-| GET | `/api/v1/evaluations/next` | Get next assignment |
-| POST | `/api/v1/evaluations/assignments/:id/submit` | Submit evaluation |
-| GET | `/api/v1/adjudications/next` | Get next moderation case |
-| POST | `/api/v1/adjudications/:id/decide` | Finalize escalated answer |
-| GET | `/api/v1/dashboard/overview` | System overview |
+## Architecture
 
-## Environment Variables
-
-Copy `apps/api/.env.example` to `apps/api/.env` and adjust as needed.
-
-## Production Notes
-
-- Change JWT secrets before deployment
-- Enable HTTPS and secure cookie settings
-- Configure S3/MinIO for PDF and image storage
-- Add Redis-backed job queue for PDF processing pipeline
-- Enable MFA for admin and head examiner accounts
+See [docs/PHASE-1-ARCHITECTURE.md](./docs/PHASE-1-ARCHITECTURE.md)

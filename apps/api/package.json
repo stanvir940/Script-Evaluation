@@ -1,5 +1,5 @@
 {
-  "name": "@ase/api",
+  "name": "@dasems/api",
   "version": "1.0.0",
   "private": true,
   "scripts": {
@@ -9,7 +9,7 @@
     "seed": "tsx src/scripts/seed.ts"
   },
   "dependencies": {
-    "@ase/shared-types": "*",
+    "@dasems/shared-types": "*",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
