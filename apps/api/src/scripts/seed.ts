@@ -84,45 +84,55 @@ async function seed() {
 
   const admin = await User.create({
     employeeId: "ADMIN001",
+    email: "admin@kuet.edu",
     name: "System Administrator",
     passwordHash,
     role: "SUPER_ADMIN",
     subjectIds: [],
     departmentIds: [],
+    isActive: true,
   });
 
   const [headExaminer, t1, t2, t3] = await User.insertMany([
     {
       employeeId: "HEAD001",
+      email: "head@kuet.edu",
       name: "Prof. Dr. Karim",
       passwordHash,
       role: "HEAD_EXAMINER",
       subjectIds: [],
       departmentIds: [],
+      isActive: true,
     },
     {
       employeeId: "TCH001",
+      email: "tch1@kuet.edu",
       name: "Dr. Rahman",
       passwordHash,
       role: "TEACHER",
       subjectIds: [physics._id],
       departmentIds: [departments[0]._id],
+      isActive: true,
     },
     {
       employeeId: "TCH002",
+      email: "tch2@kuet.edu",
       name: "Dr. Ahmed",
       passwordHash,
       role: "TEACHER",
       subjectIds: [physics._id],
       departmentIds: [departments[0]._id],
+      isActive: true,
     },
     {
       employeeId: "TCH003",
+      email: "tch3@kuet.edu",
       name: "Dr. Khan",
       passwordHash,
       role: "TEACHER",
       subjectIds: [physics._id],
       departmentIds: [departments[0]._id],
+      isActive: true,
     },
   ]);
 

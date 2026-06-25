@@ -1,14 +1,14 @@
-import { Types } from 'mongoose';
-import { User } from '../../models';
-import { IUser } from '../../models/User';
+import { Types } from "mongoose";
+import { User } from "../../models";
+import { IUser } from "../../models/User";
 
 export class UserRepository {
   findAll() {
-    return User.find().select('-passwordHash').sort({ createdAt: -1 });
+    return User.find().select("-passwordHash").sort({ createdAt: -1 });
   }
 
   findById(id: string) {
-    return User.findById(id).select('-passwordHash');
+    return User.findById(id).select("-passwordHash");
   }
 
   findByEmployeeId(employeeId: string) {
@@ -20,7 +20,13 @@ export class UserRepository {
   }
 
   update(id: string, data: Partial<IUser>) {
-    return User.findByIdAndUpdate(id, data, { new: true }).select('-passwordHash');
+    return User.findByIdAndUpdate(id, data, { new: true }).select(
+      "-passwordHash",
+    );
+  }
+
+  deleteById(id: string) {
+    return User.findByIdAndDelete(id);
   }
 
   toDto(user: IUser | (IUser & { _id: Types.ObjectId })) {

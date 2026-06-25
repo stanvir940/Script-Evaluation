@@ -1,23 +1,23 @@
-import jwt from 'jsonwebtoken';
-import bcrypt from 'bcryptjs';
-import crypto from 'crypto';
-import { Types } from 'mongoose';
-import { AuthTokens } from '@dasems/shared-types';
-import { config } from '../../config';
-import { AppError } from '../../lib/errors';
-import { JwtPayload } from '../../middleware/auth.middleware';
-import { authRepository } from './auth.repository';
-import { LoginDto } from './auth.dto';
+import jwt from "jsonwebtoken";
+import bcrypt from "bcryptjs";
+import crypto from "crypto";
+import { Types } from "mongoose";
+import { AuthTokens } from "@dasems/shared-types";
+import { config } from "../../config";
+import { AppError } from "../../lib/errors";
+import { JwtPayload } from "../../middleware/auth.middleware";
+import { authRepository } from "./auth.repository";
+import { LoginDto } from "./auth.dto";
 
 function signAccessToken(payload: JwtPayload): string {
   return jwt.sign(payload, config.jwtAccessSecret, {
-    expiresIn: config.jwtAccessExpiry as jwt.SignOptions['expiresIn'],
+    expiresIn: config.jwtAccessExpiry as jwt.SignOptions["expiresIn"],
   });
 }
 
 function signRefreshToken(payload: JwtPayload): string {
   return jwt.sign(payload, config.jwtRefreshSecret, {
-    expiresIn: config.jwtRefreshExpiry as jwt.SignOptions['expiresIn'],
+    expiresIn: config.jwtRefreshExpiry as jwt.SignOptions["expiresIn"],
   });
 }
 
@@ -27,12 +27,12 @@ export class AuthService {
   async login(dto: LoginDto): Promise<AuthTokens> {
     const user = await this.repo.findUserByEmployeeId(dto.employeeId);
     if (!user) {
-      throw AppError.unauthorized('Invalid credentials');
+      throw AppError.unauthorized("Invalid credentials");
     }
 
     const valid = await bcrypt.compare(dto.password, user.passwordHash);
     if (!valid) {
-      throw AppError.unauthorized('Invalid credentials');
+      throw AppError.unauthorized("Invalid credentials");
     }
 
     await this.repo.updateLastLogin(user._id);
@@ -45,7 +45,10 @@ export class AuthService {
 
     const accessToken = signAccessToken(payload);
     const refreshToken = signRefreshToken(payload);
-    const tokenHash = crypto.createHash('sha256').update(refreshToken).digest('hex');
+    const tokenHash = crypto
+      .createHash("sha256")
+      .update(refreshToken)
+      .digest("hex");
 
     await this.repo.createRefreshToken({
       userId: user._id,
@@ -65,31 +68,42 @@ export class AuthService {
     try {
       payload = jwt.verify(refreshToken, config.jwtRefreshSecret) as JwtPayload;
     } catch {
-      throw AppError.unauthorized('Invalid refresh token');
+      throw AppError.unauthorized("Invalid refresh token");
     }
 
-    const tokenHash = crypto.createHash('sha256').update(refreshToken).digest('hex');
+    const tokenHash = crypto
+      .createHash("sha256")
+      .update(refreshToken)
+      .digest("hex");
     const stored = await this.repo.findValidRefreshToken(
       new Types.ObjectId(payload.userId),
-      tokenHash
+      tokenHash,
     );
 
     if (!stored) {
-      throw AppError.unauthorized('Refresh token revoked or expired');
+      throw AppError.unauthorized("Refresh token revoked or expired");
+    }
+
+    const user = await this.repo.findUserById(payload.userId);
+    if (!user || !user.isActive) {
+      throw AppError.unauthorized("User not found or inactive");
     }
 
     return { accessToken: signAccessToken(payload) };
   }
 
   async logout(refreshToken: string): Promise<void> {
-    const tokenHash = crypto.createHash('sha256').update(refreshToken).digest('hex');
+    const tokenHash = crypto
+      .createHash("sha256")
+      .update(refreshToken)
+      .digest("hex");
     await this.repo.revokeRefreshToken(tokenHash);
   }
 
   async getMe(userId: string) {
     const user = await this.repo.findUserById(userId);
     if (!user || !user.isActive) {
-      throw AppError.notFound('User not found');
+      throw AppError.notFound("User not found");
     }
     return this.repo.toAuthUser(user);
   }
