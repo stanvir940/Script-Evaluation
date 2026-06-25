@@ -1,0 +1,19 @@
+{
+  "name": "admission-script-evaluation",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev -w @ase/api\" \"npm run dev -w @ase/web\"",
+    "dev:api": "npm run dev -w @ase/api",
+    "dev:web": "npm run dev -w @ase/web",
+    "build": "npm run build -w @ase/shared-types && npm run build -w @ase/api && npm run build -w @ase/web",
+    "seed": "npm run seed -w @ase/api"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}
