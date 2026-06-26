@@ -1,4 +1,4 @@
-import { Types } from 'mongoose';
+import { Types } from "mongoose";
 import {
   Answer,
   Assignment,
@@ -6,7 +6,8 @@ import {
   Adjudication,
   AdmissionSession,
   User,
-} from '../models';
+} from "../models";
+import { upsertResultForAnswer } from "./results";
 
 export async function reconcileAnswer(answerId: Types.ObjectId): Promise<void> {
   const evaluations = await Evaluation.find({ answerId }).sort({ slot: 1 });
@@ -21,7 +22,7 @@ export async function reconcileAnswer(answerId: Types.ObjectId): Promise<void> {
   const threshold = session?.moderationThreshold ?? 3;
 
   if (spread > threshold) {
-    answer.status = 'ESCALATED';
+    answer.status = "ESCALATED";
     answer.finalMark = undefined;
     answer.finalizationMethod = undefined;
     await answer.save();
@@ -33,27 +34,29 @@ export async function reconcileAnswer(answerId: Types.ObjectId): Promise<void> {
         answerId,
         evaluationIds: evaluations.map((e) => e._id),
         markSpread: spread,
-        status: 'PENDING',
+        status: "PENDING",
       },
-      { upsert: true, new: true }
+      { upsert: true, new: true },
     );
   } else {
     const average = marks.reduce((a, b) => a + b, 0) / marks.length;
-    answer.status = 'FINALIZED';
+    answer.status = "FINALIZED";
     answer.finalMark = Math.round(average * 100) / 100;
-    answer.finalizationMethod = 'AVERAGE';
+    answer.finalizationMethod = "AVERAGE";
     answer.finalizedAt = new Date();
     await answer.save();
+    // Persist/update result summary for this finalized answer
+    await upsertResultForAnswer(answer._id);
   }
 }
 
 export async function assignTeachersToAnswer(
   answerId: Types.ObjectId,
   sessionId: Types.ObjectId,
-  subjectId: Types.ObjectId
+  subjectId: Types.ObjectId,
 ): Promise<void> {
   const teachers = await User.find({
-    role: 'TEACHER',
+    role: "TEACHER",
     isActive: true,
     subjectIds: subjectId,
   });
@@ -66,8 +69,11 @@ export async function assignTeachersToAnswer(
   const workloads = await Promise.all(
     teachers.map(async (t) => ({
       teacher: t,
-      count: await Assignment.countDocuments({ teacherId: t._id, status: { $ne: 'SUBMITTED' } }),
-    }))
+      count: await Assignment.countDocuments({
+        teacherId: t._id,
+        status: { $ne: "SUBMITTED" },
+      }),
+    })),
   );
 
   workloads.sort((a, b) => a.count - b.count);
@@ -79,23 +85,27 @@ export async function assignTeachersToAnswer(
       answerId,
       teacherId: selected[slot]._id,
       slot: slot + 1,
-      status: 'PENDING',
+      status: "PENDING",
     });
   }
 
-  await Answer.findByIdAndUpdate(answerId, { status: 'ASSIGNED' });
+  await Answer.findByIdAndUpdate(answerId, { status: "ASSIGNED" });
 }
 
 export async function assignAllUnassigned(sessionId: string): Promise<number> {
   const answers = await Answer.find({
     sessionId: new Types.ObjectId(sessionId),
-    status: 'UNASSIGNED',
+    status: "UNASSIGNED",
   });
 
   for (const answer of answers) {
     const existing = await Assignment.countDocuments({ answerId: answer._id });
     if (existing === 0) {
-      await assignTeachersToAnswer(answer._id, answer.sessionId, answer.subjectId);
+      await assignTeachersToAnswer(
+        answer._id,
+        answer.sessionId,
+        answer.subjectId,
+      );
     }
   }
 

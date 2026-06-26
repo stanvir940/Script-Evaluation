@@ -14,11 +14,30 @@ import { seedQuestionsForSession } from '../../lib/processor';
 const router = Router();
 
 const createStudentSchema = z.object({
-  sessionId: z.string(),
-  roll: z.string(),
-  name: z.string(),
-  faculty: z.string(),
-  departmentId: z.string(),
+  sessionId: z.string().min(1),
+  roll: z.string().min(1),
+  name: z.string().min(1),
+  faculty: z.string().min(1),
+  departmentId: z.string().min(1),
+});
+
+const objectIdSchema = z.string().refine((value) => Types.ObjectId.isValid(value), 'Invalid MongoDB ObjectId');
+
+const bulkStudentSchema = z.object({
+  sessionId: objectIdSchema,
+  students: z.array(
+    z.object({
+      roll: z.string().min(1),
+      name: z.string().min(1),
+      faculty: z.string().min(1),
+      departmentId: objectIdSchema,
+    })
+  ).min(1),
+});
+
+const uploadPdfSchema = z.object({
+  pdfBase64: z.string().min(1),
+  filename: z.string().min(1).optional(),
 });
 
 router.get('/', authenticate, authorize('SUPER_ADMIN'), asyncHandler(async (req: AuthRequest, res: Response) => {
@@ -48,36 +67,76 @@ router.post('/', authenticate, authorize('SUPER_ADMIN'), validateBody(createStud
   res.status(201).json({ success: true, data: { id: student._id.toString(), sCode } });
 }));
 
-router.post('/bulk', authenticate, authorize('SUPER_ADMIN'), asyncHandler(async (req: AuthRequest, res: Response) => {
-  const { sessionId, students } = req.body as {
-    sessionId: string;
-    students: Array<{ roll: string; name: string; faculty: string; departmentId: string }>;
-  };
+router.post('/bulk', authenticate, authorize('SUPER_ADMIN'), validateBody(bulkStudentSchema), asyncHandler(async (req: AuthRequest, res: Response) => {
+  const { sessionId, students } = req.body;
+  const duplicateRolls = new Set<string>();
+  const seenRolls = new Set<string>();
+
+  for (const row of students) {
+    const normalizedRoll = row.roll.trim();
+    if (seenRolls.has(normalizedRoll)) duplicateRolls.add(normalizedRoll);
+    seenRolls.add(normalizedRoll);
+  }
+
+  if (duplicateRolls.size > 0) {
+    res.status(409).json({
+      success: false,
+      error: `Duplicate rolls in upload: ${Array.from(duplicateRolls).join(', ')}`,
+    });
+    return;
+  }
+
+  const existing = await Student.find({
+    sessionId: new Types.ObjectId(sessionId),
+    roll: { $in: Array.from(seenRolls) },
+  }).select('roll');
+
+  if (existing.length > 0) {
+    res.status(409).json({
+      success: false,
+      error: `Students already exist: ${existing.map((s) => s.roll).join(', ')}`,
+    });
+    return;
+  }
+
   await seedQuestionsForSession(sessionId);
   const created = [];
+
   for (const row of students) {
     const seq = await getNextSCodeSequence(sessionId);
     const sCode = await generateSCode(sessionId, seq);
-    const student = await Student.create({ sessionId, ...row, sCode });
+    const student = await Student.create({
+      sessionId,
+      roll: row.roll.trim(),
+      name: row.name.trim(),
+      faculty: row.faculty.trim(),
+      departmentId: row.departmentId,
+      sCode,
+    });
     created.push({ id: student._id.toString(), roll: student.roll, sCode });
   }
+
+  await writeAuditFromRequest(req, 'STUDENTS_BULK_CREATED', 'AdmissionSession', sessionId, undefined, {
+    count: created.length,
+  });
+
   res.status(201).json({ success: true, data: created });
 }));
 
-router.post('/:id/upload-pdf', authenticate, authorize('SUPER_ADMIN'), asyncHandler(async (req: AuthRequest, res: Response) => {
+router.post('/:id/upload-pdf', authenticate, authorize('SUPER_ADMIN'), validateBody(uploadPdfSchema), asyncHandler(async (req: AuthRequest, res: Response) => {
   const student = await Student.findById(req.params.id);
   if (!student) {
     res.status(404).json({ success: false, error: 'Student not found' });
     return;
   }
 
-  const { pdfBase64, filename } = req.body as { pdfBase64: string; filename: string };
-  if (!pdfBase64) {
-    res.status(422).json({ success: false, error: 'pdfBase64 required' });
+  const { pdfBase64, filename } = req.body;
+  const buffer = Buffer.from(pdfBase64, 'base64');
+  if (buffer.length === 0 || buffer.subarray(0, 4).toString() !== '%PDF') {
+    res.status(422).json({ success: false, error: 'Valid PDF file required' });
     return;
   }
 
-  const buffer = Buffer.from(pdfBase64, 'base64');
   const stored = await savePdf(student.sessionId.toString(), buffer, filename || 'script.pdf');
 
   const script = await Script.findOneAndUpdate(
@@ -97,6 +156,11 @@ router.post('/:id/upload-pdf', authenticate, authorize('SUPER_ADMIN'), asyncHand
   await student.save();
 
   processScript(script._id.toString()).catch(console.error);
+
+  await writeAuditFromRequest(req, 'SCRIPT_PDF_UPLOADED', 'Script', script._id.toString(), undefined, {
+    studentId: student._id.toString(),
+    sCode: student.sCode,
+  });
 
   res.json({ success: true, data: { scriptId: script._id.toString(), status: 'QUEUED' } });
 }));

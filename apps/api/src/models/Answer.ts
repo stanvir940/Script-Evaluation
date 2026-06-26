@@ -1,5 +1,5 @@
-import mongoose, { Schema, Document, Types } from 'mongoose';
-import { AnswerStatus, FinalizationMethod } from '@dasems/shared-types';
+import mongoose, { Schema, Document, Types } from "mongoose";
+import { AnswerStatus, FinalizationMethod } from "@dasems/shared-types";
 
 export interface IBoundingBox {
   x: number;
@@ -24,8 +24,11 @@ export interface IAnswer extends Document {
   boundingBox: IBoundingBox;
   resolution: { width: number; height: number };
   rotation: number;
-  ocrStatus: 'PENDING' | 'DONE' | 'FAILED' | 'SKIPPED';
-  processingStatus: 'PENDING' | 'READY' | 'FAILED';
+  ocrStatus: "PENDING" | "DONE" | "FAILED" | "SKIPPED";
+  ocrText: string;
+  suggestedMark?: number;
+  suggestedConfidence?: number;
+  processingStatus: "PENDING" | "READY" | "FAILED";
   status: AnswerStatus;
   evaluationCount: number;
   finalMark?: number;
@@ -38,12 +41,20 @@ export interface IAnswer extends Document {
 
 const answerSchema = new Schema<IAnswer>(
   {
-    sessionId: { type: Schema.Types.ObjectId, ref: 'AdmissionSession', required: true },
-    scriptId: { type: Schema.Types.ObjectId, ref: 'Script', required: true },
-    studentId: { type: Schema.Types.ObjectId, ref: 'Student', required: true },
+    sessionId: {
+      type: Schema.Types.ObjectId,
+      ref: "AdmissionSession",
+      required: true,
+    },
+    scriptId: { type: Schema.Types.ObjectId, ref: "Script", required: true },
+    studentId: { type: Schema.Types.ObjectId, ref: "Student", required: true },
     sCode: { type: String, required: true },
-    subjectId: { type: Schema.Types.ObjectId, ref: 'Subject', required: true },
-    questionId: { type: Schema.Types.ObjectId, ref: 'Question', required: true },
+    subjectId: { type: Schema.Types.ObjectId, ref: "Subject", required: true },
+    questionId: {
+      type: Schema.Types.ObjectId,
+      ref: "Question",
+      required: true,
+    },
     questionNumber: { type: Number, required: true },
     maxMarks: { type: Number, required: true },
     imageKey: { type: String, required: true },
@@ -59,36 +70,45 @@ const answerSchema = new Schema<IAnswer>(
     rotation: { type: Number, default: 0 },
     ocrStatus: {
       type: String,
-      enum: ['PENDING', 'DONE', 'FAILED', 'SKIPPED'],
-      default: 'SKIPPED',
+      enum: ["PENDING", "DONE", "FAILED", "SKIPPED"],
+      default: "SKIPPED",
     },
+    ocrText: { type: String, default: "" },
+    suggestedMark: { type: Number },
+    suggestedConfidence: { type: Number },
     processingStatus: {
       type: String,
-      enum: ['PENDING', 'READY', 'FAILED'],
-      default: 'READY',
+      enum: ["PENDING", "READY", "FAILED"],
+      default: "READY",
     },
     status: {
       type: String,
       enum: [
-        'UNASSIGNED',
-        'ASSIGNED',
-        'PARTIALLY_EVALUATED',
-        'AWAITING_RECONCILIATION',
-        'ESCALATED',
-        'FINALIZED',
+        "UNASSIGNED",
+        "ASSIGNED",
+        "PARTIALLY_EVALUATED",
+        "AWAITING_RECONCILIATION",
+        "ESCALATED",
+        "FINALIZED",
       ],
-      default: 'UNASSIGNED',
+      default: "UNASSIGNED",
     },
     evaluationCount: { type: Number, default: 0 },
     finalMark: Number,
-    finalizationMethod: { type: String, enum: ['AVERAGE', 'HEAD_ADJUDICATION'] },
+    finalizationMethod: {
+      type: String,
+      enum: ["AVERAGE", "HEAD_ADJUDICATION"],
+    },
     finalizedAt: Date,
-    finalizedBy: { type: Schema.Types.ObjectId, ref: 'User' },
+    finalizedBy: { type: Schema.Types.ObjectId, ref: "User" },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
-answerSchema.index({ sessionId: 1, sCode: 1, questionNumber: 1 }, { unique: true });
+answerSchema.index(
+  { sessionId: 1, sCode: 1, questionNumber: 1 },
+  { unique: true },
+);
 answerSchema.index({ sessionId: 1, subjectId: 1, status: 1 });
 
-export const Answer = mongoose.model<IAnswer>('Answer', answerSchema);
+export const Answer = mongoose.model<IAnswer>("Answer", answerSchema);
