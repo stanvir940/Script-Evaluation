@@ -61,8 +61,10 @@ export async function assignTeachersToAnswer(
     subjectIds: subjectId,
   });
 
-  if (teachers.length < 3) {
-    console.warn(`Not enough teachers for subject ${subjectId.toString()}`);
+  if (teachers.length === 0) {
+    console.warn(
+      `No active teachers found for subject ${subjectId.toString()}`,
+    );
     return;
   }
 
@@ -77,13 +79,22 @@ export async function assignTeachersToAnswer(
   );
 
   workloads.sort((a, b) => a.count - b.count);
-  const selected = workloads.slice(0, 3).map((w) => w.teacher);
+  const selectedTeachers = workloads
+    .slice(0, Math.min(3, workloads.length))
+    .map((w) => w.teacher);
 
-  for (let slot = 0; slot < 3; slot++) {
+  if (selectedTeachers.length === 0) {
+    console.warn(
+      `No assignments created for answer ${answerId.toString()} because no teachers are available.`,
+    );
+    return;
+  }
+
+  for (let slot = 0; slot < selectedTeachers.length; slot++) {
     await Assignment.create({
       sessionId,
       answerId,
-      teacherId: selected[slot]._id,
+      teacherId: selectedTeachers[slot]._id,
       slot: slot + 1,
       status: "PENDING",
     });

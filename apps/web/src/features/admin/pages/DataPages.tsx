@@ -1,8 +1,13 @@
-import { useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { AdmissionSessionDto, DepartmentDto, QuestionDto, StudentAdminDto } from '@dasems/shared-types';
-import { api } from '../../../shared/api/client';
-import { AppLayout } from '../../../shared/components/layout/AppLayout';
+import { useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  AdmissionSessionDto,
+  DepartmentDto,
+  QuestionDto,
+  StudentAdminDto,
+} from "@dasems/shared-types";
+import { api } from "../../../shared/api/client";
+import { AppLayout } from "../../../shared/components/layout/AppLayout";
 
 interface StudentUploadRow {
   roll: string;
@@ -17,7 +22,7 @@ interface ParsedStudentRow extends StudentUploadRow {
 
 function parseCsvLine(line: string): string[] {
   const values: string[] = [];
-  let current = '';
+  let current = "";
   let quoted = false;
 
   for (let i = 0; i < line.length; i += 1) {
@@ -29,9 +34,9 @@ function parseCsvLine(line: string): string[] {
       i += 1;
     } else if (char === '"') {
       quoted = !quoted;
-    } else if (char === ',' && !quoted) {
+    } else if (char === "," && !quoted) {
       values.push(current.trim());
-      current = '';
+      current = "";
     } else {
       current += char;
     }
@@ -44,37 +49,49 @@ function parseCsvLine(line: string): string[] {
 function parseStudentCsv(
   text: string,
   defaultDepartmentId: string,
-  departments: DepartmentDto[]
+  departments: DepartmentDto[],
 ): { rows: ParsedStudentRow[]; errors: string[] } {
   const lines = text.split(/\r?\n/).filter((line) => line.trim().length > 0);
-  if (lines.length < 2) return { rows: [], errors: ['CSV must include a header and at least one student row.'] };
+  if (lines.length < 2)
+    return {
+      rows: [],
+      errors: ["CSV must include a header and at least one student row."],
+    };
 
   const headers = parseCsvLine(lines[0]).map((h) => h.trim().toLowerCase());
   const indexOf = (name: string) => headers.indexOf(name);
-  const rollIndex = indexOf('roll');
-  const nameIndex = indexOf('name');
-  const facultyIndex = indexOf('faculty');
-  const departmentIdIndex = indexOf('departmentid');
-  const departmentCodeIndex = indexOf('departmentcode');
+  const rollIndex = indexOf("roll");
+  const nameIndex = indexOf("name");
+  const facultyIndex = indexOf("faculty");
+  const departmentIdIndex = indexOf("departmentid");
+  const departmentCodeIndex = indexOf("departmentcode");
   const errors: string[] = [];
   const rows: ParsedStudentRow[] = [];
-  const departmentByCode = new Map(departments.map((d) => [d.code.toUpperCase(), d.id]));
+  const departmentByCode = new Map(
+    departments.map((d) => [d.code.toUpperCase(), d.id]),
+  );
 
   if (rollIndex === -1 || nameIndex === -1 || facultyIndex === -1) {
-    return { rows: [], errors: ['Required headers: roll,name,faculty.'] };
+    return { rows: [], errors: ["Required headers: roll,name,faculty."] };
   }
 
   lines.slice(1).forEach((line, idx) => {
     const values = parseCsvLine(line);
     const rowNumber = idx + 2;
-    const roll = values[rollIndex]?.trim() ?? '';
-    const name = values[nameIndex]?.trim() ?? '';
-    const faculty = values[facultyIndex]?.trim() ?? '';
-    const departmentCode = values[departmentCodeIndex]?.trim().toUpperCase() ?? '';
-    const departmentId = values[departmentIdIndex]?.trim() || departmentByCode.get(departmentCode) || defaultDepartmentId;
+    const roll = values[rollIndex]?.trim() ?? "";
+    const name = values[nameIndex]?.trim() ?? "";
+    const faculty = values[facultyIndex]?.trim() ?? "";
+    const departmentCode =
+      values[departmentCodeIndex]?.trim().toUpperCase() ?? "";
+    const departmentId =
+      values[departmentIdIndex]?.trim() ||
+      departmentByCode.get(departmentCode) ||
+      defaultDepartmentId;
 
     if (!roll || !name || !faculty || !departmentId) {
-      errors.push(`Row ${rowNumber}: roll, name, faculty, and department are required.`);
+      errors.push(
+        `Row ${rowNumber}: roll, name, faculty, and department are required.`,
+      );
       return;
     }
 
@@ -88,21 +105,47 @@ function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => {
-      const result = String(reader.result ?? '');
-      resolve(result.includes(',') ? result.split(',')[1] : result);
+      const result = String(reader.result ?? "");
+      resolve(result.includes(",") ? result.split(",")[1] : result);
     };
-    reader.onerror = () => reject(new Error('Failed to read file.'));
+    reader.onerror = () => reject(new Error("Failed to read file."));
     reader.readAsDataURL(file);
   });
 }
 
 export function QuestionsPage() {
-  const [sessionId, setSessionId] = useState('');
+  const queryClient = useQueryClient();
+  const [sessionId, setSessionId] = useState("");
+  const [bulkPayload, setBulkPayload] = useState("");
   const { data: questions } = useQuery({
-    queryKey: ['questions', sessionId],
+    queryKey: ["questions", sessionId],
     queryFn: () => api.get<QuestionDto[]>(`/questions?sessionId=${sessionId}`),
     enabled: Boolean(sessionId),
   });
+
+  const bulkImportMutation = useMutation({
+    mutationFn: (body: {
+      sessionId: string;
+      questions: Array<Record<string, unknown>>;
+    }) => api.post("/questions/bulk", body),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["questions", sessionId] });
+      setBulkPayload("");
+    },
+  });
+
+  const handleBulkImport = () => {
+    if (!sessionId) return;
+    try {
+      const parsed = JSON.parse(bulkPayload);
+      if (!Array.isArray(parsed) || parsed.length === 0) {
+        throw new Error("Provide a JSON array of question objects.");
+      }
+      bulkImportMutation.mutate({ sessionId, questions: parsed });
+    } catch {
+      window.alert("Please enter a valid JSON array of question objects.");
+    }
+  };
 
   return (
     <AppLayout>
@@ -110,12 +153,43 @@ export function QuestionsPage() {
         <h1 className="text-xl font-semibold mb-6">Question Bank</h1>
         <div className="mb-4">
           <label className="block text-sm font-medium mb-1">Session ID</label>
-          <input className="input-field max-w-md" value={sessionId} onChange={(e) => setSessionId(e.target.value)} placeholder="Paste session ID from seed output" />
+          <input
+            className="input-field max-w-md"
+            value={sessionId}
+            onChange={(e) => setSessionId(e.target.value)}
+            placeholder="Paste session ID from seed output"
+          />
+        </div>
+        <div className="panel p-4 mb-6">
+          <h2 className="text-lg font-semibold mb-2">Upload Solution Pack</h2>
+          <p className="text-sm text-text-muted mb-3">
+            Paste a JSON array containing all questions with model answers and
+            rubrics. This updates the question bank for the selected session.
+          </p>
+          <textarea
+            className="input-field min-h-[220px] font-mono text-sm"
+            value={bulkPayload}
+            onChange={(e) => setBulkPayload(e.target.value)}
+            placeholder='[{"questionNumber":1,"text":"Question 1","maxMarks":10,"modelAnswer":"...","rubric":"...","keywords":[],"difficulty":"MEDIUM"}]'
+          />
+          <button
+            type="button"
+            className="btn-primary mt-3"
+            onClick={handleBulkImport}
+            disabled={!sessionId || bulkImportMutation.isPending}
+          >
+            {bulkImportMutation.isPending ? "Importing..." : "Import Solutions"}
+          </button>
         </div>
         {questions && (
           <table className="data-table">
             <thead>
-              <tr><th>Q#</th><th>Text</th><th>Marks</th><th>Difficulty</th></tr>
+              <tr>
+                <th>Q#</th>
+                <th>Text</th>
+                <th>Marks</th>
+                <th>Difficulty</th>
+              </tr>
             </thead>
             <tbody>
               {questions.map((q) => (
@@ -136,51 +210,87 @@ export function QuestionsPage() {
 
 export function StudentsPage() {
   const queryClient = useQueryClient();
-  const [sessionId, setSessionId] = useState('');
-  const [departmentId, setDepartmentId] = useState('');
+  const [sessionId, setSessionId] = useState("");
+  const [departmentId, setDepartmentId] = useState("");
   const [parsedRows, setParsedRows] = useState<ParsedStudentRow[]>([]);
   const [parseErrors, setParseErrors] = useState<string[]>([]);
-  const [uploadingStudentId, setUploadingStudentId] = useState<string | null>(null);
+  const [uploadingStudentId, setUploadingStudentId] = useState<string | null>(
+    null,
+  );
+  const [singleStudentForm, setSingleStudentForm] = useState({
+    roll: "",
+    name: "",
+    faculty: "",
+  });
 
   const { data: sessions } = useQuery({
-    queryKey: ['sessions'],
-    queryFn: () => api.get<AdmissionSessionDto[]>('/sessions'),
+    queryKey: ["sessions"],
+    queryFn: () => api.get<AdmissionSessionDto[]>("/sessions"),
+    refetchInterval: 5000,
   });
 
   const { data: departments } = useQuery({
-    queryKey: ['departments'],
-    queryFn: () => api.get<DepartmentDto[]>('/departments'),
+    queryKey: ["departments"],
+    queryFn: () => api.get<DepartmentDto[]>("/departments"),
+    refetchInterval: 5000,
   });
 
   const { data: students } = useQuery({
-    queryKey: ['students', sessionId],
-    queryFn: () => api.get<StudentAdminDto[]>(`/students?sessionId=${sessionId}`),
+    queryKey: ["students", sessionId],
+    queryFn: () =>
+      api.get<StudentAdminDto[]>(`/students?sessionId=${sessionId}`),
     enabled: Boolean(sessionId),
+    refetchInterval: 5000,
   });
 
   const uploadMutation = useMutation({
     mutationFn: (rows: StudentUploadRow[]) =>
-      api.post<Array<{ id: string; roll: string; sCode: string }>>('/students/bulk', {
-        sessionId,
-        students: rows,
-      }),
+      api.post<Array<{ id: string; roll: string; sCode: string }>>(
+        "/students/bulk",
+        {
+          sessionId,
+          students: rows,
+        },
+      ),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['students', sessionId] });
+      queryClient.invalidateQueries({ queryKey: ["students", sessionId] });
       setParsedRows([]);
       setParseErrors([]);
     },
   });
 
+  const singleStudentMutation = useMutation({
+    mutationFn: (data: {
+      sessionId: string;
+      roll: string;
+      name: string;
+      faculty: string;
+    }) => api.post("/students", data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["students", sessionId] });
+      setSingleStudentForm({ roll: "", name: "", faculty: "" });
+    },
+  });
+
   const pdfUploadMutation = useMutation({
-    mutationFn: async ({ studentId, file }: { studentId: string; file: File }) => {
+    mutationFn: async ({
+      studentId,
+      file,
+    }: {
+      studentId: string;
+      file: File;
+    }) => {
       const pdfBase64 = await fileToBase64(file);
-      return api.post<{ scriptId: string; status: string }>(`/students/${studentId}/upload-pdf`, {
-        pdfBase64,
-        filename: file.name,
-      });
+      return api.post<{ scriptId: string; status: string }>(
+        `/students/${studentId}/upload-pdf`,
+        {
+          pdfBase64,
+          filename: file.name,
+        },
+      );
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['students', sessionId] });
+      queryClient.invalidateQueries({ queryKey: ["students", sessionId] });
       setUploadingStudentId(null);
     },
     onError: () => setUploadingStudentId(null),
@@ -195,7 +305,9 @@ export function StudentsPage() {
   };
 
   const submitUpload = () => {
-    uploadMutation.mutate(parsedRows.map(({ rowNumber: _rowNumber, ...row }) => row));
+    uploadMutation.mutate(
+      parsedRows.map(({ rowNumber: _rowNumber, ...row }) => row),
+    );
   };
 
   const handlePdfUpload = (studentId: string, file: File | undefined) => {
@@ -207,25 +319,134 @@ export function StudentsPage() {
   return (
     <AppLayout>
       <div className="p-6">
-        <h1 className="text-xl font-semibold mb-6">Students (Admin — contains PII)</h1>
-        <p className="text-sm text-text-muted mb-4">Teachers never see roll, name, or department. They only see s_code.</p>
+        <h1 className="text-xl font-semibold mb-6">
+          Students (Admin — contains PII)
+        </h1>
+        <p className="text-sm text-text-muted mb-4">
+          Teachers never see roll, name, or department. They only see s_code.
+        </p>
+
+        <div className="panel p-4 mb-6">
+          <h2 className="text-lg font-semibold mb-4">Create Single Student</h2>
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
+            <div>
+              <label className="block text-sm font-medium mb-1">Session</label>
+              <select
+                className="input-field"
+                value={sessionId}
+                onChange={(e) => setSessionId(e.target.value)}
+              >
+                <option value="">Select session...</option>
+                {sessions?.map((session) => (
+                  <option key={session.id} value={session.id}>
+                    {session.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Roll</label>
+              <input
+                className="input-field"
+                value={singleStudentForm.roll}
+                onChange={(e) =>
+                  setSingleStudentForm({
+                    ...singleStudentForm,
+                    roll: e.target.value,
+                  })
+                }
+                placeholder="Roll number"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Name</label>
+              <input
+                className="input-field"
+                value={singleStudentForm.name}
+                onChange={(e) =>
+                  setSingleStudentForm({
+                    ...singleStudentForm,
+                    name: e.target.value,
+                  })
+                }
+                placeholder="Full name"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Faculty</label>
+              <input
+                className="input-field"
+                value={singleStudentForm.faculty}
+                onChange={(e) =>
+                  setSingleStudentForm({
+                    ...singleStudentForm,
+                    faculty: e.target.value,
+                  })
+                }
+                placeholder="Faculty"
+              />
+            </div>
+            <button
+              type="button"
+              className="btn-primary"
+              disabled={
+                !sessionId ||
+                !singleStudentForm.roll ||
+                !singleStudentForm.name ||
+                !singleStudentForm.faculty ||
+                singleStudentMutation.isPending
+              }
+              onClick={() =>
+                singleStudentMutation.mutate({
+                  sessionId,
+                  roll: singleStudentForm.roll,
+                  name: singleStudentForm.name,
+                  faculty: singleStudentForm.faculty,
+                })
+              }
+            >
+              {singleStudentMutation.isPending ? "Adding..." : "Add Student"}
+            </button>
+          </div>
+          {singleStudentMutation.error && (
+            <p className="text-danger text-sm mt-2">
+              {singleStudentMutation.error.message}
+            </p>
+          )}
+        </div>
 
         <div className="panel p-4 mb-6 grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
           <div>
-            <label className="block text-sm font-medium mb-1">Session</label>
-            <select className="input-field" value={sessionId} onChange={(e) => setSessionId(e.target.value)}>
+            <label className="block text-sm font-medium mb-1">
+              Session (Bulk)
+            </label>
+            <select
+              className="input-field"
+              value={sessionId}
+              onChange={(e) => setSessionId(e.target.value)}
+            >
               <option value="">Select session...</option>
               {sessions?.map((session) => (
-                <option key={session.id} value={session.id}>{session.name}</option>
+                <option key={session.id} value={session.id}>
+                  {session.name}
+                </option>
               ))}
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Default Department</label>
-            <select className="input-field" value={departmentId} onChange={(e) => setDepartmentId(e.target.value)}>
+            <label className="block text-sm font-medium mb-1">
+              Default Department
+            </label>
+            <select
+              className="input-field"
+              value={departmentId}
+              onChange={(e) => setDepartmentId(e.target.value)}
+            >
               <option value="">Select department...</option>
               {departments?.map((department) => (
-                <option key={department.id} value={department.id}>{department.code} — {department.name}</option>
+                <option key={department.id} value={department.id}>
+                  {department.code} — {department.name}
+                </option>
               ))}
             </select>
           </div>
@@ -243,7 +464,9 @@ export function StudentsPage() {
 
         {parseErrors.length > 0 && (
           <div className="bg-danger-bg text-danger border border-danger/20 px-4 py-3 mb-4 text-sm">
-            {parseErrors.map((error) => <p key={error}>{error}</p>)}
+            {parseErrors.map((error) => (
+              <p key={error}>{error}</p>
+            ))}
           </div>
         )}
 
@@ -257,12 +480,19 @@ export function StudentsPage() {
                 disabled={uploadMutation.isPending || parseErrors.length > 0}
                 onClick={submitUpload}
               >
-                {uploadMutation.isPending ? 'Uploading...' : `Upload ${parsedRows.length} Students`}
+                {uploadMutation.isPending
+                  ? "Uploading..."
+                  : `Upload ${parsedRows.length} Students`}
               </button>
             </div>
             <table className="data-table">
               <thead>
-                <tr><th>Row</th><th>Roll</th><th>Name</th><th>Faculty</th></tr>
+                <tr>
+                  <th>Row</th>
+                  <th>Roll</th>
+                  <th>Name</th>
+                  <th>Faculty</th>
+                </tr>
               </thead>
               <tbody>
                 {parsedRows.slice(0, 10).map((row) => (
@@ -290,7 +520,14 @@ export function StudentsPage() {
         {students && (
           <table className="data-table">
             <thead>
-              <tr><th>Roll</th><th>Name</th><th>s_code</th><th>Status</th><th>Answer Script PDF</th></tr>
+              <tr>
+                <th>Roll</th>
+                <th>Name</th>
+                <th>s_code</th>
+                <th>Status</th>
+                <th>Uploaded Script</th>
+                <th>Answer Script PDF</th>
+              </tr>
             </thead>
             <tbody>
               {students.map((s) => (
@@ -300,15 +537,33 @@ export function StudentsPage() {
                   <td>{s.sCode}</td>
                   <td>{s.processingStatus}</td>
                   <td>
+                    {s.scriptUrl ? (
+                      <a
+                        href={s.scriptUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-primary underline"
+                      >
+                        View PDF ({s.scriptStatus})
+                      </a>
+                    ) : (
+                      <span className="text-text-muted">Not uploaded</span>
+                    )}
+                  </td>
+                  <td>
                     <input
                       type="file"
                       accept="application/pdf,.pdf"
                       className="input-field py-2"
                       disabled={uploadingStudentId === s.id}
-                      onChange={(e) => handlePdfUpload(s.id, e.target.files?.[0])}
+                      onChange={(e) =>
+                        handlePdfUpload(s.id, e.target.files?.[0])
+                      }
                     />
                     {uploadingStudentId === s.id && (
-                      <p className="text-sm text-text-muted mt-1">Uploading...</p>
+                      <p className="text-sm text-text-muted mt-1">
+                        Uploading...
+                      </p>
                     )}
                   </td>
                 </tr>
@@ -327,10 +582,10 @@ export function StudentsPage() {
 }
 
 export function ResultsPage() {
-  const [sessionId, setSessionId] = useState('');
+  const [sessionId, setSessionId] = useState("");
 
   const exportCsv = () => {
-    window.open(`/api/v1/results/export/csv?sessionId=${sessionId}`, '_blank');
+    window.open(`/api/v1/results/export/csv?sessionId=${sessionId}`, "_blank");
   };
 
   return (
@@ -339,15 +594,26 @@ export function ResultsPage() {
         <h1 className="text-xl font-semibold mb-6">Results & Export</h1>
         <div className="mb-4">
           <label className="block text-sm font-medium mb-1">Session ID</label>
-          <input className="input-field" value={sessionId} onChange={(e) => setSessionId(e.target.value)} />
+          <input
+            className="input-field"
+            value={sessionId}
+            onChange={(e) => setSessionId(e.target.value)}
+          />
         </div>
         <div className="flex gap-3">
-          <button type="button" onClick={exportCsv} className="btn-primary" disabled={!sessionId}>Export CSV</button>
+          <button
+            type="button"
+            onClick={exportCsv}
+            className="btn-primary"
+            disabled={!sessionId}
+          >
+            Export CSV
+          </button>
           <button
             type="button"
             className="btn-secondary"
             disabled={!sessionId}
-            onClick={() => api.post('/results/publish', { sessionId })}
+            onClick={() => api.post("/results/publish", { sessionId })}
           >
             Publish Results
           </button>

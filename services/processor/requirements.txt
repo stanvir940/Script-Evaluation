@@ -3,3 +3,5 @@ uvicorn==0.34.0
 pydantic==2.10.4
 Pillow==11.1.0
 pymupdf==1.25.2
+pdfplumber>=0.11.0          # PDF text extraction + page rendering           # Image cropping – REQUIRED, must not be missing
+pytesseract>=0.3.10  

@@ -1,32 +1,37 @@
 // ─── Roles & Status ───────────────────────────────────────────────────────────
 
-export type UserRole = 'SUPER_ADMIN' | 'HEAD_EXAMINER' | 'TEACHER';
+export type UserRole = "SUPER_ADMIN" | "HEAD_EXAMINER" | "TEACHER";
 
-export type AdmissionExamStatus = 'DRAFT' | 'ACTIVE' | 'CLOSED' | 'ARCHIVED';
-export type AdmissionSessionStatus = 'DRAFT' | 'ACTIVE' | 'CLOSED' | 'ARCHIVED';
+export type AdmissionExamStatus = "DRAFT" | "ACTIVE" | "CLOSED" | "ARCHIVED";
+export type AdmissionSessionStatus = "DRAFT" | "ACTIVE" | "CLOSED" | "ARCHIVED";
 
-export type ProcessingStatus = 'PENDING' | 'QUEUED' | 'PROCESSING' | 'READY' | 'FAILED';
+export type ProcessingStatus =
+  | "PENDING"
+  | "QUEUED"
+  | "PROCESSING"
+  | "READY"
+  | "FAILED";
 export type AnswerStatus =
-  | 'UNASSIGNED'
-  | 'ASSIGNED'
-  | 'PARTIALLY_EVALUATED'
-  | 'AWAITING_RECONCILIATION'
-  | 'ESCALATED'
-  | 'FINALIZED';
+  | "UNASSIGNED"
+  | "ASSIGNED"
+  | "PARTIALLY_EVALUATED"
+  | "AWAITING_RECONCILIATION"
+  | "ESCALATED"
+  | "FINALIZED";
 
-export type AssignmentStatus = 'PENDING' | 'IN_PROGRESS' | 'SUBMITTED';
-export type FinalizationMethod = 'AVERAGE' | 'HEAD_ADJUDICATION';
-export type Difficulty = 'EASY' | 'MEDIUM' | 'HARD';
+export type AssignmentStatus = "PENDING" | "IN_PROGRESS" | "SUBMITTED";
+export type FinalizationMethod = "AVERAGE" | "HEAD_ADJUDICATION";
+export type Difficulty = "EASY" | "MEDIUM" | "HARD";
 
 export type AnnotationTool =
-  | 'pen'
-  | 'highlighter'
-  | 'underline'
-  | 'rectangle'
-  | 'arrow'
-  | 'circle'
-  | 'text'
-  | 'erase';
+  | "pen"
+  | "highlighter"
+  | "underline"
+  | "rectangle"
+  | "arrow"
+  | "circle"
+  | "text"
+  | "erase";
 
 // ─── API ──────────────────────────────────────────────────────────────────────
 
@@ -153,6 +158,9 @@ export interface StudentAdminDto {
   departmentId: string;
   sCode: string;
   processingStatus: ProcessingStatus;
+  scriptId?: string;
+  scriptStatus?: ProcessingStatus;
+  scriptUrl?: string;
 }
 
 /** Teacher-safe view */

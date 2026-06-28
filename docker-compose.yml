@@ -25,13 +25,30 @@ services:
     volumes:
       - minio_data:/data
 
+  api:
+    build: ./apps/api
+    ports:
+      - "4000:4000"
+    environment:
+      MONGODB_URI: mongodb://mongodb:27017/admission_eval
+      REDIS_URL: redis://redis:6379
+      PROCESSOR_URL: http://processor:5001
+      UPLOADS_DIR: uploads # relative — resolves to /app/uploads inside container
+    volumes:
+      - uploads_data:/app/uploads # api writes here → /app/uploads/file.pdf
+    depends_on:
+      - mongodb
+      - redis
+      - processor
+
   processor:
     build: ./services/processor
     ports:
       - "5001:5001"
     volumes:
-      - ./apps/api/uploads:/uploads:ro
+      - uploads_data:/uploads # same volume, different mount point → /uploads/file.pdf
 
 volumes:
   mongodb_data:
   minio_data:
+  uploads_data: # shared between api (/app/uploads) and processor (/uploads)

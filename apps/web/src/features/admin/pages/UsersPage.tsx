@@ -37,6 +37,7 @@ export function UsersPage() {
   const { data: users } = useQuery({
     queryKey: ["users"],
     queryFn: () => api.get<UserDto[]>("/users"),
+    refetchInterval: 5000,
   });
 
   const createUserMutation = useMutation<UserDto, Error, CreateUserForm>({
