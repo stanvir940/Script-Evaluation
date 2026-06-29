@@ -3,7 +3,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { UserDto, UserRole } from "@dasems/shared-types";
+import {
+  DepartmentDto,
+  SubjectDto,
+  UserDto,
+  UserRole,
+} from "@dasems/shared-types";
 import { api } from "../../../shared/api/client";
 import { AppLayout } from "../../../shared/components/layout/AppLayout";
 
@@ -12,8 +17,8 @@ const userFormSchema = z.object({
   name: z.string().min(1),
   email: z.string().email().optional(),
   role: z.enum(["SUPER_ADMIN", "HEAD_EXAMINER", "TEACHER"]),
-  subjectIdsText: z.string().optional().default(""),
-  departmentIdsText: z.string().optional().default(""),
+  subjectIds: z.array(z.string()).optional().default([]),
+  departmentIds: z.array(z.string()).optional().default([]),
   password: z.string().min(6),
 });
 
@@ -21,8 +26,8 @@ const userUpdateSchema = z.object({
   name: z.string().min(1).optional(),
   email: z.string().email().optional(),
   role: z.enum(["SUPER_ADMIN", "HEAD_EXAMINER", "TEACHER"]).optional(),
-  subjectIdsText: z.string().optional().default(""),
-  departmentIdsText: z.string().optional().default(""),
+  subjectIds: z.array(z.string()).optional().default([]),
+  departmentIds: z.array(z.string()).optional().default([]),
   password: z.string().min(6).optional(),
   isActive: z.boolean().optional(),
 });
@@ -33,6 +38,16 @@ type UpdateUserForm = z.infer<typeof userUpdateSchema>;
 export function UsersPage() {
   const queryClient = useQueryClient();
   const [editingUser, setEditingUser] = useState<UserDto | null>(null);
+
+  const { data: departments } = useQuery({
+    queryKey: ["departments"],
+    queryFn: () => api.get<DepartmentDto[]>("/departments"),
+  });
+
+  const { data: subjects } = useQuery({
+    queryKey: ["subjects"],
+    queryFn: () => api.get<SubjectDto[]>("/subjects"),
+  });
 
   const { data: users } = useQuery({
     queryKey: ["users"],
@@ -48,8 +63,8 @@ export function UsersPage() {
         email: payload.email,
         role: payload.role,
         password: payload.password,
-        subjectIds: parseIds(payload.subjectIdsText),
-        departmentIds: parseIds(payload.departmentIdsText),
+        subjectIds: payload.subjectIds,
+        departmentIds: payload.departmentIds,
         isActive: true,
       }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["users"] }),
@@ -100,14 +115,6 @@ export function UsersPage() {
     [],
   );
 
-  const parseIds = (value?: string) =>
-    value
-      ? value
-          .split(",")
-          .map((item) => item.trim())
-          .filter(Boolean)
-      : [];
-
   const handleCreate = async (data: CreateUserForm) => {
     await createUserMutation.mutateAsync(data);
     reset();
@@ -119,8 +126,8 @@ export function UsersPage() {
       name: user.name,
       email: user.email ?? undefined,
       role: user.role,
-      subjectIdsText: user.subjectIds.join(", "),
-      departmentIdsText: user.departmentIds.join(", "),
+      subjectIds: user.subjectIds,
+      departmentIds: user.departmentIds,
       isActive: user.isActive,
     });
   };
@@ -135,8 +142,8 @@ export function UsersPage() {
         role: data.role,
         password: data.password,
         isActive: data.isActive,
-        subjectIds: parseIds(data.subjectIdsText),
-        departmentIds: parseIds(data.departmentIdsText),
+        subjectIds: data.subjectIds,
+        departmentIds: data.departmentIds,
       },
     });
   };
@@ -259,35 +266,45 @@ export function UsersPage() {
 
               <div>
                 <label className="block text-sm font-medium text-text-primary mb-1">
-                  Subject IDs
+                  Subjects
                 </label>
-                <input
-                  type="text"
-                  className="input-field"
-                  placeholder="Comma separated subject ids"
+                <select
+                  multiple
+                  className="input-field min-h-[120px]"
                   {...(editingUser
-                    ? registerUpdate("subjectIdsText")
-                    : register("subjectIdsText"))}
-                />
+                    ? registerUpdate("subjectIds")
+                    : register("subjectIds"))}
+                >
+                  {subjects?.map((subject) => (
+                    <option key={subject.id} value={subject.id}>
+                      {subject.code} — {subject.name}
+                    </option>
+                  ))}
+                </select>
                 <p className="text-sm text-text-muted mt-1">
-                  Enter subject IDs separated by commas.
+                  Select one or more subjects for this user.
                 </p>
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-text-primary mb-1">
-                  Department IDs
+                  Departments
                 </label>
-                <input
-                  type="text"
-                  className="input-field"
-                  placeholder="Comma separated department ids"
+                <select
+                  multiple
+                  className="input-field min-h-[120px]"
                   {...(editingUser
-                    ? registerUpdate("departmentIdsText")
-                    : register("departmentIdsText"))}
-                />
+                    ? registerUpdate("departmentIds")
+                    : register("departmentIds"))}
+                >
+                  {departments?.map((department) => (
+                    <option key={department.id} value={department.id}>
+                      {department.code} — {department.name}
+                    </option>
+                  ))}
+                </select>
                 <p className="text-sm text-text-muted mt-1">
-                  Enter department IDs separated by commas.
+                  Select one or more departments for this user.
                 </p>
               </div>
 

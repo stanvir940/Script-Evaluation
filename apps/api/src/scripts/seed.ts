@@ -93,48 +93,99 @@ async function seed() {
     isActive: true,
   });
 
-  const [headExaminer, t1, t2, t3] = await User.insertMany([
-    {
-      employeeId: "HEAD001",
-      email: "head@kuet.edu",
-      name: "Prof. Dr. Karim",
-      passwordHash,
-      role: "HEAD_EXAMINER",
-      subjectIds: [],
-      departmentIds: [],
-      isActive: true,
-    },
-    {
-      employeeId: "TCH001",
-      email: "tch1@kuet.edu",
-      name: "Dr. Rahman",
-      passwordHash,
-      role: "TEACHER",
-      subjectIds: [physics._id],
-      departmentIds: [departments[0]._id],
-      isActive: true,
-    },
-    {
-      employeeId: "TCH002",
-      email: "tch2@kuet.edu",
-      name: "Dr. Ahmed",
-      passwordHash,
-      role: "TEACHER",
-      subjectIds: [physics._id],
-      departmentIds: [departments[0]._id],
-      isActive: true,
-    },
-    {
-      employeeId: "TCH003",
-      email: "tch3@kuet.edu",
-      name: "Dr. Khan",
-      passwordHash,
-      role: "TEACHER",
-      subjectIds: [physics._id],
-      departmentIds: [departments[0]._id],
-      isActive: true,
-    },
-  ]);
+  const [headExaminer, phy1, phy2, che1, che2, mat1, mat2, eng1, eng2] =
+    await User.insertMany([
+      {
+        employeeId: "HEAD001",
+        email: "head@kuet.edu",
+        name: "Prof. Dr. Karim",
+        passwordHash,
+        role: "HEAD_EXAMINER",
+        subjectIds: [],
+        departmentIds: [],
+        isActive: true,
+      },
+      {
+        employeeId: "TCH001",
+        email: "phy1@kuet.edu",
+        name: "Dr. Rahman",
+        passwordHash,
+        role: "TEACHER",
+        subjectIds: [physics._id],
+        departmentIds: [departments[0]._id],
+        isActive: true,
+      },
+      {
+        employeeId: "TCH002",
+        email: "phy2@kuet.edu",
+        name: "Dr. Ahmed",
+        passwordHash,
+        role: "TEACHER",
+        subjectIds: [physics._id],
+        departmentIds: [departments[0]._id],
+        isActive: true,
+      },
+      {
+        employeeId: "TCH003",
+        email: "che1@kuet.edu",
+        name: "Dr. Chowdhury",
+        passwordHash,
+        role: "TEACHER",
+        subjectIds: [subjects.find((s) => s.code === "CHE")!._id],
+        departmentIds: [departments[0]._id],
+        isActive: true,
+      },
+      {
+        employeeId: "TCH004",
+        email: "che2@kuet.edu",
+        name: "Dr. Sultana",
+        passwordHash,
+        role: "TEACHER",
+        subjectIds: [subjects.find((s) => s.code === "CHE")!._id],
+        departmentIds: [departments[0]._id],
+        isActive: true,
+      },
+      {
+        employeeId: "TCH005",
+        email: "mat1@kuet.edu",
+        name: "Dr. Karim",
+        passwordHash,
+        role: "TEACHER",
+        subjectIds: [subjects.find((s) => s.code === "MAT")!._id],
+        departmentIds: [departments[0]._id],
+        isActive: true,
+      },
+      {
+        employeeId: "TCH006",
+        email: "mat2@kuet.edu",
+        name: "Dr. Alam",
+        passwordHash,
+        role: "TEACHER",
+        subjectIds: [subjects.find((s) => s.code === "MAT")!._id],
+        departmentIds: [departments[0]._id],
+        isActive: true,
+      },
+      {
+        employeeId: "TCH007",
+        email: "eng1@kuet.edu",
+        name: "Dr. Rahima",
+        passwordHash,
+        role: "TEACHER",
+        subjectIds: [subjects.find((s) => s.code === "ENG")!._id],
+        departmentIds: [departments[1]._id],
+        isActive: true,
+      },
+      {
+        employeeId: "TCH008",
+        email: "eng2@kuet.edu",
+        name: "Dr. Shirin",
+        passwordHash,
+        role: "TEACHER",
+        subjectIds: [subjects.find((s) => s.code === "ENG")!._id],
+        departmentIds: [departments[1]._id],
+        isActive: true,
+      },
+    ]);
 
   const exam = await AdmissionExam.create({
     name: "Undergraduate Admission Test 2026",
@@ -152,14 +203,14 @@ async function seed() {
     sCodePrefix: "KUET-2026",
     questionMapping: [
       {
-        subjectId: subjects[0]._id,
-        subjectCode: "PHY",
+        subjectId: subjects[1]._id,
+        subjectCode: "CHE",
         startQuestion: 1,
         endQuestion: 10,
       },
       {
-        subjectId: subjects[1]._id,
-        subjectCode: "CHE",
+        subjectId: subjects[0]._id,
+        subjectCode: "PHY",
         startQuestion: 11,
         endQuestion: 20,
       },
@@ -198,15 +249,12 @@ async function seed() {
     );
   }
 
-  // Create answers for Physics Q1-Q3 only (demo subset)
-  const phyQuestions = await Question.find({
-    sessionId: session._id,
-    subjectId: physics._id,
-    questionNumber: { $lte: 3 },
+  const questions = await Question.find({ sessionId: session._id }).sort({
+    questionNumber: 1,
   });
 
   for (const student of students) {
-    for (const question of phyQuestions) {
+    for (const question of questions) {
       const img = await createAnswerImage(
         session._id.toString(),
         student.sCode,
@@ -217,18 +265,18 @@ async function seed() {
         scriptId: new Types.ObjectId(),
         studentId: student._id,
         sCode: student.sCode,
-        subjectId: physics._id,
+        subjectId: question.subjectId,
         questionId: question._id,
         questionNumber: question.questionNumber,
         maxMarks: question.maxMarks,
         imageKey: img.key,
         imageUrl: img.url,
-        pageNumber: 1,
+        pageNumber: Math.max(1, Math.ceil(question.questionNumber / 10)),
         boundingBox: { x: 0, y: 0, width: 800, height: 400 },
         resolution: { width: 800, height: 400 },
         status: "UNASSIGNED",
       });
-      await assignTeachersToAnswer(answer._id, session._id, physics._id);
+      await assignTeachersToAnswer(answer._id, session._id, question.subjectId);
     }
   }
 
@@ -269,7 +317,7 @@ async function seed() {
   console.log("  ADMIN001 | HEAD001 | TCH001 | TCH002 | TCH003");
   console.log(`\nSession ID: ${session._id.toString()}`);
   console.log(
-    "5 students, Physics Q1-Q3 answers, 1 escalated case for moderation demo",
+    "5 students, Physics Q1-Q10 answers, 1 escalated case for moderation demo",
   );
 
   await disconnectDatabase();

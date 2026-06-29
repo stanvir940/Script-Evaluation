@@ -117,6 +117,10 @@ export function QuestionsPage() {
   const queryClient = useQueryClient();
   const [sessionId, setSessionId] = useState("");
   const [bulkPayload, setBulkPayload] = useState("");
+  const { data: sessions } = useQuery({
+    queryKey: ["sessions"],
+    queryFn: () => api.get<AdmissionSessionDto[]>("/sessions"),
+  });
   const { data: questions } = useQuery({
     queryKey: ["questions", sessionId],
     queryFn: () => api.get<QuestionDto[]>(`/questions?sessionId=${sessionId}`),
@@ -147,18 +151,43 @@ export function QuestionsPage() {
     }
   };
 
+  const loadSampleJson = async () => {
+    try {
+      const response = await fetch("/question-bank.json");
+      if (!response.ok) throw new Error("Could not load sample JSON");
+      const data = await response.json();
+      setBulkPayload(JSON.stringify(data, null, 2));
+    } catch (err) {
+      window.alert(
+        err instanceof Error
+          ? err.message
+          : "Failed to load sample question JSON.",
+      );
+    }
+  };
+
   return (
     <AppLayout>
       <div className="p-6">
         <h1 className="text-xl font-semibold mb-6">Question Bank</h1>
         <div className="mb-4">
-          <label className="block text-sm font-medium mb-1">Session ID</label>
-          <input
+          <label className="block text-sm font-medium mb-1">Session</label>
+          <select
             className="input-field max-w-md"
             value={sessionId}
             onChange={(e) => setSessionId(e.target.value)}
-            placeholder="Paste session ID from seed output"
-          />
+          >
+            <option value="">Select session...</option>
+            {sessions?.map((session) => (
+              <option key={session.id} value={session.id}>
+                {session.name} — {session.sCodePrefix} ({session.status})
+              </option>
+            ))}
+          </select>
+          <p className="text-sm text-text-muted mt-2">
+            Select a session to import the question bank. Session IDs are shown
+            in the admission session list.
+          </p>
         </div>
         <div className="panel p-4 mb-6">
           <h2 className="text-lg font-semibold mb-2">Upload Solution Pack</h2>
@@ -172,14 +201,25 @@ export function QuestionsPage() {
             onChange={(e) => setBulkPayload(e.target.value)}
             placeholder='[{"questionNumber":1,"text":"Question 1","maxMarks":10,"modelAnswer":"...","rubric":"...","keywords":[],"difficulty":"MEDIUM"}]'
           />
-          <button
-            type="button"
-            className="btn-primary mt-3"
-            onClick={handleBulkImport}
-            disabled={!sessionId || bulkImportMutation.isPending}
-          >
-            {bulkImportMutation.isPending ? "Importing..." : "Import Solutions"}
-          </button>
+          <div className="flex flex-wrap gap-3 mt-3">
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={loadSampleJson}
+            >
+              Load Sample JSON
+            </button>
+            <button
+              type="button"
+              className="btn-primary"
+              onClick={handleBulkImport}
+              disabled={!sessionId || bulkImportMutation.isPending}
+            >
+              {bulkImportMutation.isPending
+                ? "Importing..."
+                : "Import Solutions"}
+            </button>
+          </div>
         </div>
         {questions && (
           <table className="data-table">

@@ -101,13 +101,13 @@ router.post(
       return;
     }
 
-    // Map question numbers to subjects (1-10 PHY, 11-20 CHE, 21-30 MAT, 31-35 ENG)
+    // Map question numbers to subjects using the configured order: 1-10 CHE, 11-20 PHY, 21-30 MAT, 31-35 ENG
     const getSubjectForQuestion = (qNum: number) => {
       if (qNum >= 1 && qNum <= 10)
-        return subjects.find((s) => s.code === "PHY") || subjects[0];
+        return subjects.find((s) => s.code === "CHE") || subjects[0];
       if (qNum >= 11 && qNum <= 20)
         return (
-          subjects.find((s) => s.code === "CHE") || subjects[1] || subjects[0]
+          subjects.find((s) => s.code === "PHY") || subjects[1] || subjects[0]
         );
       if (qNum >= 21 && qNum <= 30)
         return (

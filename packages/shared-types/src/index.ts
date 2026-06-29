@@ -262,6 +262,25 @@ export interface DashboardOverviewDto {
   }>;
 }
 
+export interface TeacherEvaluationSummaryDto {
+  teacherId: string;
+  teacherName: string;
+  employeeId: string;
+  subjectCodes: string[];
+  assigned: number;
+  inProgress: number;
+  submitted: number;
+  remaining: number;
+  recentEvaluations: Array<{
+    answerId: string;
+    sCode: string;
+    questionNumber: number;
+    subjectCode: string;
+    mark: number;
+    submittedAt: string;
+  }>;
+}
+
 // ─── Phase 6 DTOs ─────────────────────────────────────────────────────────────
 
 export interface ResultRowDto {

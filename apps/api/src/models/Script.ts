@@ -1,5 +1,5 @@
-import mongoose, { Schema, Document, Types } from 'mongoose';
-import { ProcessingStatus } from '@dasems/shared-types';
+import mongoose, { Schema, Document, Types } from "mongoose";
+import { ProcessingStatus } from "@dasems/shared-types";
 
 export interface IScript extends Document {
   _id: Types.ObjectId;
@@ -17,22 +17,26 @@ export interface IScript extends Document {
 
 const scriptSchema = new Schema<IScript>(
   {
-    sessionId: { type: Schema.Types.ObjectId, ref: 'AdmissionSession', required: true },
-    studentId: { type: Schema.Types.ObjectId, ref: 'Student', required: true },
+    sessionId: {
+      type: Schema.Types.ObjectId,
+      ref: "AdmissionSession",
+      required: true,
+    },
+    studentId: { type: Schema.Types.ObjectId, ref: "Student", required: true },
     sCode: { type: String, required: true },
     originalPdfKey: { type: String, required: true },
     originalPdfUrl: { type: String, required: true },
     pageCount: { type: Number, default: 0 },
     processingStatus: {
       type: String,
-      enum: ['PENDING', 'QUEUED', 'PROCESSING', 'READY', 'FAILED'],
-      default: 'PENDING',
+      enum: ["PENDING", "QUEUED", "PROCESSING", "READY", "FAILED"],
+      default: "PENDING",
     },
     processingError: String,
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 scriptSchema.index({ sessionId: 1, studentId: 1 }, { unique: true });
 
-export const Script = mongoose.model<IScript>('Script', scriptSchema);
+export const Script = mongoose.model<IScript>("Script", scriptSchema);

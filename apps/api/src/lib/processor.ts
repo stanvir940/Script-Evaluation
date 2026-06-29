@@ -409,8 +409,8 @@ export async function processScript(scriptId: string): Promise<void> {
 export async function buildDefaultQuestionMapping(sessionId: string) {
   const subjects = await Subject.find({ isActive: true }).sort({ code: 1 });
   const mapping = [
-    { subjectCode: "PHY", start: 1, end: 10 },
-    { subjectCode: "CHE", start: 11, end: 20 },
+    { subjectCode: "CHE", start: 1, end: 10 },
+    { subjectCode: "PHY", start: 11, end: 20 },
     { subjectCode: "MAT", start: 21, end: 30 },
     { subjectCode: "ENG", start: 31, end: 35 },
   ];

@@ -1,26 +1,32 @@
-import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { AdmissionExamDto, AdmissionSessionDto } from '@dasems/shared-types';
-import { api } from '../../../shared/api/client';
-import { AppLayout } from '../../../shared/components/layout/AppLayout';
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { AdmissionExamDto, AdmissionSessionDto } from "@dasems/shared-types";
+import { api } from "../../../shared/api/client";
+import { AppLayout } from "../../../shared/components/layout/AppLayout";
 
 export function SessionsPage() {
   const queryClient = useQueryClient();
-  const [form, setForm] = useState({ examId: '', name: '', sCodePrefix: 'KUET-2026', moderationThreshold: 3 });
+  const [form, setForm] = useState({
+    examId: "",
+    name: "",
+    sCodePrefix: "KUET-2026",
+    moderationThreshold: 3,
+  });
 
   const { data: exams } = useQuery({
-    queryKey: ['admission-exams'],
-    queryFn: () => api.get<AdmissionExamDto[]>('/admission-exams'),
+    queryKey: ["admission-exams"],
+    queryFn: () => api.get<AdmissionExamDto[]>("/admission-exams"),
   });
 
   const { data: sessions, isLoading } = useQuery({
-    queryKey: ['sessions'],
-    queryFn: () => api.get<AdmissionSessionDto[]>('/sessions'),
+    queryKey: ["sessions"],
+    queryFn: () => api.get<AdmissionSessionDto[]>("/sessions"),
   });
 
   const createMutation = useMutation({
-    mutationFn: (body: typeof form) => api.post<AdmissionSessionDto>('/sessions', body),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['sessions'] }),
+    mutationFn: (body: typeof form) =>
+      api.post<AdmissionSessionDto>("/sessions", body),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["sessions"] }),
   });
 
   return (
@@ -52,7 +58,9 @@ export function SessionsPage() {
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Session Name</label>
+            <label className="block text-sm font-medium mb-1">
+              Session Name
+            </label>
             <input
               className="input-field"
               value={form.name}
@@ -61,26 +69,41 @@ export function SessionsPage() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">s_code Prefix</label>
+            <label className="block text-sm font-medium mb-1">
+              s_code Prefix
+            </label>
             <input
               className="input-field"
               value={form.sCodePrefix}
-              onChange={(e) => setForm({ ...form, sCodePrefix: e.target.value })}
+              onChange={(e) =>
+                setForm({ ...form, sCodePrefix: e.target.value })
+              }
               required
             />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Moderation Threshold</label>
+            <label className="block text-sm font-medium mb-1">
+              Moderation Threshold
+            </label>
             <input
               type="number"
               className="input-field"
               value={form.moderationThreshold}
-              onChange={(e) => setForm({ ...form, moderationThreshold: Number(e.target.value) })}
+              onChange={(e) =>
+                setForm({
+                  ...form,
+                  moderationThreshold: Number(e.target.value),
+                })
+              }
               min={0}
             />
           </div>
           <div className="md:col-span-2">
-            <button type="submit" className="btn-primary" disabled={createMutation.isPending}>
+            <button
+              type="submit"
+              className="btn-primary"
+              disabled={createMutation.isPending}
+            >
               Create Session
             </button>
           </div>
@@ -92,6 +115,7 @@ export function SessionsPage() {
           <table className="data-table">
             <thead>
               <tr>
+                <th>ID</th>
                 <th>Name</th>
                 <th>Status</th>
                 <th>s_code Prefix</th>
@@ -101,6 +125,7 @@ export function SessionsPage() {
             <tbody>
               {sessions?.map((s) => (
                 <tr key={s.id}>
+                  <td className="font-mono text-xs break-all">{s.id}</td>
                   <td>{s.name}</td>
                   <td>{s.status}</td>
                   <td>{s.sCodePrefix}</td>

@@ -1,0 +1,406 @@
+[
+  {
+    "questionNumber": 1,
+    "text": "State Newton’s three laws of motion. Give one practical example illustrating each law.",
+    "maxMarks": 10,
+    "modelAnswer": "First Law (Law of Inertia): A body remains at rest or in uniform straight-line motion unless acted upon by an external unbalanced force. Example: Passengers move forward when a moving bus stops suddenly.\n\nSecond Law: The rate of change of momentum of a body is proportional to the applied force and occurs in the direction of the force. Formula: F = ma. Example: An empty shopping cart accelerates more easily than a loaded one.\n\nThird Law: For every action, there is an equal and opposite reaction. Example: A rocket moves upward by expelling gases downward.",
+    "rubric": "2 marks for First Law, 2 marks for Second Law, 2 marks for Third Law, 1 mark each for correct practical example (3 marks), 1 mark for correct formula F=ma.",
+    "keywords": [
+      "Newton's First Law",
+      "Inertia",
+      "F=ma",
+      "Momentum",
+      "Action and Reaction"
+    ],
+    "difficulty": "MEDIUM"
+  },
+  {
+    "questionNumber": 2,
+    "text": "A body is projected vertically upward with an initial velocity of 20 m/s. Calculate (a) the maximum height reached, (b) the time taken to reach the maximum height.",
+    "maxMarks": 10,
+    "modelAnswer": "Given: u = 20 m/s, g = 9.8 m/s².\nMaximum height: h = u²/(2g) = 20²/(2×9.8) = 400/19.6 = 20.41 m.\nTime to reach maximum height: t = u/g = 20/9.8 = 2.04 s.\nAnswer: Maximum height = 20.41 m, Time = 2.04 s.",
+    "rubric": "2 marks for writing given values, 3 marks for correct height formula and calculation, 3 marks for correct time formula and calculation, 2 marks for final answers with units.",
+    "keywords": [
+      "Vertical Motion",
+      "Maximum Height",
+      "Time of Ascent",
+      "SUVAT"
+    ],
+    "difficulty": "MEDIUM"
+  },
+  {
+    "questionNumber": 3,
+    "text": "Define work, energy, and power. Derive the relationship between kinetic energy and work done on a body.",
+    "maxMarks": 10,
+    "modelAnswer": "Work: Product of force and displacement in the direction of force (W = Fs).\nEnergy: Capacity to do work.\nPower: Rate of doing work (P = W/t).\nDerivation: Using F = ma and v² − u² = 2as,\nW = Fs = mas = m(v²−u²)/2 = ½mv² − ½mu².\nTherefore, Work Done = Change in Kinetic Energy.",
+    "rubric": "2 marks for definitions of work, energy and power, 6 marks for correct derivation, 2 marks for final relation W = ΔKE.",
+    "keywords": [
+      "Work",
+      "Energy",
+      "Power",
+      "Kinetic Energy",
+      "Work-Energy Theorem"
+    ],
+    "difficulty": "MEDIUM"
+  },
+  {
+    "questionNumber": 4,
+    "text": "State the law of conservation of momentum. A 2 kg object moving at 5 m/s collides with a stationary 3 kg object. If they stick together after collision, determine their common velocity.",
+    "maxMarks": 10,
+    "modelAnswer": "Law: Total momentum before collision equals total momentum after collision if no external force acts.\nInitial momentum = (2×5) + (3×0) = 10 kg·m/s.\nFinal velocity = 10/(2+3) = 2 m/s.\nAnswer: Common velocity = 2 m/s.",
+    "rubric": "3 marks for stating the law, 3 marks for calculating initial momentum, 2 marks for applying conservation equation, 2 marks for final velocity with unit.",
+    "keywords": ["Momentum", "Conservation of Momentum", "Collision"],
+    "difficulty": "MEDIUM"
+  },
+  {
+    "questionNumber": 5,
+    "text": "Explain the phenomenon of total internal reflection. State the conditions required for total internal reflection to occur and mention one practical application.",
+    "maxMarks": 10,
+    "modelAnswer": "Total internal reflection occurs when light traveling from a denser medium to a rarer medium strikes the interface at an angle greater than the critical angle and is completely reflected back.\nConditions:\n1. Light must travel from denser to rarer medium.\n2. Angle of incidence must exceed the critical angle.\nApplication: Optical fiber communication (also used in endoscopy and prisms).",
+    "rubric": "4 marks for explanation, 4 marks for two conditions, 2 marks for one correct application.",
+    "keywords": [
+      "Total Internal Reflection",
+      "Critical Angle",
+      "Optical Fiber"
+    ],
+    "difficulty": "EASY"
+  },
+  {
+    "questionNumber": 6,
+    "text": "A convex lens has a focal length of 20 cm. An object is placed 30 cm from the lens. Determine the position and nature of the image formed.",
+    "maxMarks": 10,
+    "modelAnswer": "Using lens formula: 1/f = 1/v − 1/u.\nHere f = 20 cm, u = −30 cm.\n1/20 = 1/v + 1/30\n1/v = 1/20 − 1/30 = 1/60\nv = 60 cm.\nThe image is formed 60 cm on the opposite side of the lens. It is real, inverted, and magnified.",
+    "rubric": "3 marks for lens formula, 4 marks for correct calculation, 3 marks for identifying image nature.",
+    "keywords": ["Convex Lens", "Lens Formula", "Real Image", "Magnified"],
+    "difficulty": "MEDIUM"
+  },
+  {
+    "questionNumber": 7,
+    "text": "Describe electromagnetic induction. State Faraday’s laws of electromagnetic induction and explain one application.",
+    "maxMarks": 10,
+    "modelAnswer": "Electromagnetic induction is the production of emf when magnetic flux linked with a conductor changes.\nFaraday’s First Law: An emf is induced whenever magnetic flux changes.\nSecond Law: Induced emf is proportional to the rate of change of magnetic flux (E = -dΦ/dt).\nApplication: Electric generator converts mechanical energy into electrical energy.",
+    "rubric": "3 marks for definition, 4 marks for Faraday's laws, 3 marks for application.",
+    "keywords": [
+      "Electromagnetic Induction",
+      "Faraday's Laws",
+      "Magnetic Flux",
+      "Generator"
+    ],
+    "difficulty": "MEDIUM"
+  },
+  {
+    "questionNumber": 8,
+    "text": "Define electric current, potential difference, and resistance. State Ohm’s law and explain its significance in electrical circuits.",
+    "maxMarks": 10,
+    "modelAnswer": "Electric Current: Rate of flow of electric charge (I = Q/t).\nPotential Difference: Work done per unit charge (V = W/Q).\nResistance: Opposition to the flow of current (R = V/I).\nOhm's Law: At constant temperature, current is directly proportional to voltage (V = IR).\nSignificance: Used to calculate current, voltage and resistance in electrical circuits and to design electrical systems.",
+    "rubric": "2 marks each for definitions (6 marks), 2 marks for Ohm's Law, 2 marks for significance.",
+    "keywords": ["Current", "Voltage", "Resistance", "Ohm's Law"],
+    "difficulty": "EASY"
+  },
+  {
+    "questionNumber": 9,
+    "text": "Explain the difference between longitudinal and transverse waves. Give two examples of each type of wave.",
+    "maxMarks": 10,
+    "modelAnswer": "Longitudinal waves: Particles vibrate parallel to wave propagation. Examples: Sound waves, compression waves in springs.\nTransverse waves: Particles vibrate perpendicular to wave propagation. Examples: Light waves, waves on a stretched string.",
+    "rubric": "4 marks for comparison, 2 marks for longitudinal examples, 2 marks for transverse examples, 2 marks for clear explanation.",
+    "keywords": ["Longitudinal Wave", "Transverse Wave", "Sound", "Light"],
+    "difficulty": "EASY"
+  },
+  {
+    "questionNumber": 10,
+    "text": "State the universal law of gravitation. Calculate the gravitational force between two masses of 10 kg and 20 kg separated by a distance of 2 m.",
+    "maxMarks": 10,
+    "modelAnswer": "Universal Law of Gravitation: Every two masses attract each other with a force directly proportional to the product of their masses and inversely proportional to the square of the distance between them.\nFormula: F = Gm₁m₂/r².\nGiven: G = 6.67×10⁻¹¹ N·m²/kg², m₁ = 10 kg, m₂ = 20 kg, r = 2 m.\nF = (6.67×10⁻¹¹ × 10 × 20)/4 = 3.335×10⁻⁹ N.\nAnswer: 3.335 × 10⁻⁹ N.",
+    "rubric": "3 marks for stating the law, 2 marks for formula, 3 marks for calculation, 2 marks for correct final answer with unit.",
+    "keywords": [
+      "Gravitation",
+      "Newton's Law of Gravitation",
+      "Universal Gravitation"
+    ],
+    "difficulty": "MEDIUM"
+  },
+  {
+    "questionNumber": 11,
+    "text": "Solve the quadratic equation: 2x² − 7x + 3 = 0.",
+    "maxMarks": 10,
+    "modelAnswer": "Given: 2x² − 7x + 3 = 0.\nUsing the quadratic formula,\nx = [-(-7) ± √((-7)² − 4×2×3)]/(2×2)\n= [7 ± √(49−24)]/4\n= [7 ± 5]/4.\nTherefore, x = 3 or x = 1/2.",
+    "rubric": "2 marks for identifying coefficients, 4 marks for applying quadratic formula, 2 marks for discriminant calculation, 2 marks for correct roots.",
+    "keywords": ["Quadratic Equation", "Quadratic Formula", "Roots"],
+    "difficulty": "EASY"
+  },
+  {
+    "questionNumber": 12,
+    "text": "If A = [[2,1],[3,4]], find the determinant of A and hence determine A⁻¹.",
+    "maxMarks": 10,
+    "modelAnswer": "Matrix A = [[2,1],[3,4]].\nDet(A) = (2×4) − (1×3) = 8 − 3 = 5.\nSince determinant ≠ 0, inverse exists.\nA⁻¹ = (1/5)[[4,-1],[-3,2]].",
+    "rubric": "3 marks for determinant, 5 marks for inverse calculation, 2 marks for final matrix.",
+    "keywords": ["Matrix", "Determinant", "Inverse Matrix"],
+    "difficulty": "MEDIUM"
+  },
+  {
+    "questionNumber": 13,
+    "text": "Evaluate the limit: lim(x→2) (x²−4)/(x−2).",
+    "maxMarks": 10,
+    "modelAnswer": "Factorize numerator:\n(x²−4)=(x−2)(x+2).\nCancel (x−2).\nLimit = lim(x→2)(x+2)=4.",
+    "rubric": "4 marks for factorization, 4 marks for simplification, 2 marks for final answer.",
+    "keywords": ["Limit", "Factorization"],
+    "difficulty": "EASY"
+  },
+  {
+    "questionNumber": 14,
+    "text": "Differentiate the function y = x³ ln x.",
+    "maxMarks": 10,
+    "modelAnswer": "Using the product rule:\nd/dx(x³)=3x²,\nd/dx(lnx)=1/x.\nTherefore,\ndy/dx = 3x²lnx + x³(1/x)\n= 3x²lnx + x²\n= x²(3lnx + 1).",
+    "rubric": "3 marks for identifying product rule, 5 marks for differentiation, 2 marks for simplified answer.",
+    "keywords": ["Differentiation", "Product Rule", "Natural Logarithm"],
+    "difficulty": "MEDIUM"
+  },
+  {
+    "questionNumber": 15,
+    "text": "Evaluate the integral ∫(3x² + 2x − 5) dx.",
+    "maxMarks": 10,
+    "modelAnswer": "Integrating term by term:\n∫3x²dx=x³,\n∫2xdx=x²,\n∫−5dx=−5x.\nTherefore,\n∫(3x²+2x−5)dx=x³+x²−5x+C.",
+    "rubric": "6 marks for correct integration of all terms, 2 marks for constant of integration, 2 marks for final expression.",
+    "keywords": ["Integration", "Indefinite Integral"],
+    "difficulty": "EASY"
+  },
+  {
+    "questionNumber": 16,
+    "text": "A committee of 3 members is to be selected from 8 students. In how many different ways can the committee be formed?",
+    "maxMarks": 10,
+    "modelAnswer": "Number of ways = ⁸C₃ = 8!/(3!5!) = (8×7×6)/(3×2×1)=56.\nAnswer: 56 ways.",
+    "rubric": "3 marks for identifying combination, 5 marks for calculation, 2 marks for final answer.",
+    "keywords": ["Combination", "nCr", "Combinatorics"],
+    "difficulty": "EASY"
+  },
+  {
+    "questionNumber": 17,
+    "text": "A fair die is rolled once. Find the probability that the outcome is (a) an even number, (b) a prime number.",
+    "maxMarks": 10,
+    "modelAnswer": "Sample space = {1,2,3,4,5,6}.\n(a) Even numbers = {2,4,6}. Probability = 3/6 = 1/2.\n(b) Prime numbers = {2,3,5}. Probability = 3/6 = 1/2.",
+    "rubric": "2 marks for sample space, 4 marks for part (a), 4 marks for part (b).",
+    "keywords": ["Probability", "Sample Space", "Die"],
+    "difficulty": "EASY"
+  },
+  {
+    "questionNumber": 18,
+    "text": "If sin θ = 3/5 where 0° < θ < 90°, determine (a) cos θ, (b) tan θ.",
+    "maxMarks": 10,
+    "modelAnswer": "Using a right triangle:\nOpposite=3, Hypotenuse=5.\nAdjacent = √(25−9)=4.\nTherefore,\ncosθ=4/5,\ntanθ=3/4.",
+    "rubric": "4 marks for finding adjacent side, 3 marks for cosθ, 3 marks for tanθ.",
+    "keywords": ["Trigonometry", "Sine", "Cosine", "Tangent"],
+    "difficulty": "EASY"
+  },
+  {
+    "questionNumber": 19,
+    "text": "Find the equation of the straight line passing through the points (2,3) and (5,9).",
+    "maxMarks": 10,
+    "modelAnswer": "Slope, m=(9−3)/(5−2)=6/3=2.\nUsing point-slope form:\ny−3=2(x−2).\nTherefore,\ny=2x−1.",
+    "rubric": "3 marks for slope calculation, 5 marks for equation derivation, 2 marks for simplified equation.",
+    "keywords": ["Straight Line", "Slope", "Coordinate Geometry"],
+    "difficulty": "EASY"
+  },
+  {
+    "questionNumber": 20,
+    "text": "Find the equation of the circle whose center is (2,−1) and radius is 5.",
+    "maxMarks": 10,
+    "modelAnswer": "Equation of a circle:\n(x−h)²+(y−k)²=r².\nHere h=2, k=−1, r=5.\nTherefore,\n(x−2)²+(y+1)²=25.",
+    "rubric": "4 marks for identifying the formula, 4 marks for substitution, 2 marks for final equation.",
+    "keywords": ["Circle", "Coordinate Geometry", "Radius"],
+    "difficulty": "EASY"
+  },
+  {
+    "questionNumber": 21,
+    "text": "Explain the electronic configuration of sodium (Na) and discuss why it readily forms a +1 ion.",
+    "maxMarks": 10,
+    "modelAnswer": "Sodium (Na) has atomic number 11. Its electronic configuration is 1s² 2s² 2p⁶ 3s¹ or (2,8,1). Since it has one electron in its outermost shell, sodium readily loses this electron to attain the stable noble gas configuration of neon (2,8). Therefore, it forms a Na⁺ ion with a +1 charge.",
+    "rubric": "3 marks for correct electronic configuration, 3 marks for explaining valence electron, 2 marks for noble gas configuration, 2 marks for explaining formation of Na⁺.",
+    "keywords": [
+      "Electronic Configuration",
+      "Sodium",
+      "Na+",
+      "Valence Electron",
+      "Octet Rule"
+    ],
+    "difficulty": "EASY"
+  },
+  {
+    "questionNumber": 22,
+    "text": "Define the periodic law. Explain how atomic radius and ionization energy vary across a period.",
+    "maxMarks": 10,
+    "modelAnswer": "Periodic Law states that the physical and chemical properties of elements are periodic functions of their atomic numbers. Across a period, atomic radius decreases due to increasing effective nuclear charge, while ionization energy generally increases because electrons are held more strongly by the nucleus.",
+    "rubric": "3 marks for defining periodic law, 3 marks for atomic radius trend, 3 marks for ionization energy trend, 1 mark for explanation.",
+    "keywords": [
+      "Periodic Law",
+      "Atomic Radius",
+      "Ionization Energy",
+      "Periodic Table"
+    ],
+    "difficulty": "MEDIUM"
+  },
+  {
+    "questionNumber": 23,
+    "text": "State Le Chatelier’s Principle. How does an increase in pressure affect the equilibrium of the Haber process?",
+    "maxMarks": 10,
+    "modelAnswer": "Le Chatelier’s Principle states that when a system at equilibrium is disturbed, it shifts in the direction that opposes the disturbance. In the Haber process, N₂ + 3H₂ ⇌ 2NH₃, increasing pressure shifts the equilibrium toward the side with fewer moles of gas, producing more ammonia (NH₃).",
+    "rubric": "4 marks for stating Le Chatelier’s Principle, 4 marks for explaining pressure effect, 2 marks for applying it to the Haber process.",
+    "keywords": [
+      "Le Chatelier's Principle",
+      "Haber Process",
+      "Chemical Equilibrium",
+      "Pressure"
+    ],
+    "difficulty": "MEDIUM"
+  },
+  {
+    "questionNumber": 24,
+    "text": "What is a covalent bond? Compare ionic and covalent compounds with respect to their physical properties.",
+    "maxMarks": 10,
+    "modelAnswer": "A covalent bond is formed by the sharing of electron pairs between atoms. Ionic compounds have high melting and boiling points, conduct electricity when molten or in solution, and are generally soluble in water. Covalent compounds usually have lower melting and boiling points, do not conduct electricity, and are often insoluble in water but soluble in organic solvents.",
+    "rubric": "3 marks for defining covalent bond, 5 marks for comparison of physical properties, 2 marks for suitable examples or explanation.",
+    "keywords": [
+      "Covalent Bond",
+      "Ionic Compound",
+      "Physical Properties",
+      "Chemical Bonding"
+    ],
+    "difficulty": "MEDIUM"
+  },
+  {
+    "questionNumber": 25,
+    "text": "Balance the following chemical equation and identify the type of reaction: C₂H₆ + O₂ → CO₂ + H₂O.",
+    "maxMarks": 10,
+    "modelAnswer": "Balanced equation: 2C₂H₆ + 7O₂ → 4CO₂ + 6H₂O. This is a combustion reaction because a hydrocarbon reacts with oxygen to produce carbon dioxide and water while releasing heat.",
+    "rubric": "6 marks for correctly balancing the equation, 2 marks for identifying combustion reaction, 2 marks for explanation.",
+    "keywords": ["Balancing Equation", "Combustion Reaction", "Ethane"],
+    "difficulty": "MEDIUM"
+  },
+  {
+    "questionNumber": 26,
+    "text": "A solution contains 0.50 mol of NaCl dissolved in enough water to make 2.00 L of solution. Calculate the molarity of the solution.",
+    "maxMarks": 10,
+    "modelAnswer": "Given: Number of moles (n) = 0.50 mol, Volume (V) = 2.00 L. Molarity (M) = n/V = 0.50/2.00 = 0.25 mol/L. Therefore, the molarity of the solution is 0.25 M.",
+    "rubric": "2 marks for identifying given values, 4 marks for applying molarity formula, 2 marks for calculation, 2 marks for final answer with unit.",
+    "keywords": ["Molarity", "Solution", "NaCl", "Concentration"],
+    "difficulty": "EASY"
+  },
+  {
+    "questionNumber": 27,
+    "text": "Explain the process of electrolysis of molten sodium chloride. Write the reactions occurring at the anode and cathode.",
+    "maxMarks": 10,
+    "modelAnswer": "During electrolysis of molten sodium chloride, Na⁺ ions move to the cathode and Cl⁻ ions move to the anode. Cathode reaction: Na⁺ + e⁻ → Na(l). Anode reaction: 2Cl⁻ → Cl₂(g) + 2e⁻. Overall reaction: 2NaCl(l) → 2Na(l) + Cl₂(g).",
+    "rubric": "4 marks for explaining electrolysis process, 3 marks for cathode reaction, 3 marks for anode reaction.",
+    "keywords": ["Electrolysis", "Molten Sodium Chloride", "Cathode", "Anode"],
+    "difficulty": "MEDIUM"
+  },
+  {
+    "questionNumber": 28,
+    "text": "What are acids and bases according to the Brønsted–Lowry theory? Give two examples of each.",
+    "maxMarks": 10,
+    "modelAnswer": "According to the Brønsted–Lowry theory, an acid is a proton (H⁺) donor, while a base is a proton (H⁺) acceptor. Examples of acids: HCl and H₂SO₄. Examples of bases: NH₃ and OH⁻ (or NaOH in aqueous solution).",
+    "rubric": "4 marks for definitions, 3 marks for acid examples, 3 marks for base examples.",
+    "keywords": [
+      "Brønsted-Lowry Theory",
+      "Acid",
+      "Base",
+      "Proton Donor",
+      "Proton Acceptor"
+    ],
+    "difficulty": "EASY"
+  },
+  {
+    "questionNumber": 29,
+    "text": "Describe the greenhouse effect. Name two greenhouse gases and explain their impact on the environment.",
+    "maxMarks": 10,
+    "modelAnswer": "The greenhouse effect is the warming of the Earth's surface due to the trapping of infrared radiation by greenhouse gases. Two important greenhouse gases are carbon dioxide (CO₂) and methane (CH₄). Excessive amounts of these gases contribute to global warming, climate change, melting glaciers, sea-level rise, and extreme weather events.",
+    "rubric": "4 marks for describing greenhouse effect, 2 marks for naming gases, 4 marks for explaining environmental impacts.",
+    "keywords": [
+      "Greenhouse Effect",
+      "Carbon Dioxide",
+      "Methane",
+      "Global Warming",
+      "Climate Change"
+    ],
+    "difficulty": "EASY"
+  },
+  {
+    "questionNumber": 30,
+    "text": "What is an esterification reaction? Write the balanced chemical equation for the preparation of ethyl ethanoate from ethanol and ethanoic acid.",
+    "maxMarks": 10,
+    "modelAnswer": "Esterification is a reaction in which a carboxylic acid reacts with an alcohol to form an ester and water, usually in the presence of concentrated sulfuric acid as a catalyst. Balanced equation: CH₃COOH + C₂H₅OH ⇌ CH₃COOC₂H₅ + H₂O.",
+    "rubric": "4 marks for defining esterification, 4 marks for balanced chemical equation, 2 marks for mentioning catalyst or reaction conditions.",
+    "keywords": [
+      "Esterification",
+      "Ethanol",
+      "Ethanoic Acid",
+      "Ethyl Ethanoate",
+      "Organic Chemistry"
+    ],
+    "difficulty": "MEDIUM"
+  },
+  {
+    "questionNumber": 31,
+    "text": "Read the following passage carefully and answer the questions that follow.\n\nPassage:\nEducation plays a vital role in shaping the future of individuals and society. It develops knowledge, skills, and values that enable people to contribute positively to their communities. In today’s world, technology has transformed the way students learn, making education more accessible than ever before. However, self-discipline and hard work remain the key factors for academic success.\n\n(a) What is the main purpose of education according to the passage?\n(b) How has technology influenced education?\n(c) What are the key factors for academic success?",
+    "maxMarks": 10,
+    "modelAnswer": "(a) The main purpose of education is to develop knowledge, skills, and values so that individuals can contribute positively to society.\n\n(b) Technology has made education more accessible and has transformed the way students learn.\n\n(c) Self-discipline and hard work are the key factors for academic success.",
+    "rubric": "3 marks for part (a), 3 marks for part (b), 3 marks for part (c), 1 mark for clarity and completeness of answers.",
+    "keywords": [
+      "Reading Comprehension",
+      "Education",
+      "Technology",
+      "Academic Success"
+    ],
+    "difficulty": "EASY"
+  },
+  {
+    "questionNumber": 32,
+    "text": "Fill in the blanks with the appropriate words.\n(a) Honesty is the best ____.\n(b) She has been living here ____ five years.\n(c) Neither the teacher nor the students ____ present.\n(d) If I were a bird, I ____ fly.\n(e) The book was written ____ Rabindranath Tagore.",
+    "maxMarks": 10,
+    "modelAnswer": "(a) policy\n(b) for\n(c) were\n(d) would\n(e) by",
+    "rubric": "2 marks for each correct answer.",
+    "keywords": [
+      "Grammar",
+      "Fill in the Blanks",
+      "Preposition",
+      "Verb Agreement"
+    ],
+    "difficulty": "EASY"
+  },
+  {
+    "questionNumber": 33,
+    "text": "Correct the grammatical errors in the following sentences.\n(a) He do not like coffee.\n(b) The news are very interesting.\n(c) She is senior than me.\n(d) I look forward to meet you.\n(e) Each of the boys have a pen.",
+    "maxMarks": 10,
+    "modelAnswer": "(a) He does not like coffee.\n(b) The news is very interesting.\n(c) She is senior to me.\n(d) I look forward to meeting you.\n(e) Each of the boys has a pen.",
+    "rubric": "2 marks for each correctly corrected sentence.",
+    "keywords": [
+      "Grammar Correction",
+      "Subject-Verb Agreement",
+      "Gerund",
+      "Preposition"
+    ],
+    "difficulty": "MEDIUM"
+  },
+  {
+    "questionNumber": 34,
+    "text": "Change the voice of the following sentences.\n(a) The teacher praised the student.\n(b) They are building a new bridge.\n(c) Who wrote this novel?\n(d) We should obey the rules.\n(e) The police arrested the thief.",
+    "maxMarks": 10,
+    "modelAnswer": "(a) The student was praised by the teacher.\n(b) A new bridge is being built by them.\n(c) By whom was this novel written?\n(d) The rules should be obeyed by us.\n(e) The thief was arrested by the police.",
+    "rubric": "2 marks for each correct passive voice transformation.",
+    "keywords": ["Voice Change", "Active Voice", "Passive Voice"],
+    "difficulty": "MEDIUM"
+  },
+  {
+    "questionNumber": 35,
+    "text": "Write a paragraph of about 40–50 words on 'The Importance of Higher Education in Building a Successful Career.'",
+    "maxMarks": 10,
+    "modelAnswer": "Higher education plays a significant role in building a successful career. It provides specialized knowledge, practical skills, and critical thinking abilities. Graduates have better employment opportunities and can contribute effectively to society. Higher education also promotes innovation, confidence, and lifelong learning, helping individuals achieve personal and professional success.",
+    "rubric": "4 marks for relevance of content, 2 marks for organization, 2 marks for grammar and vocabulary, 2 marks for maintaining the required length.",
+    "keywords": [
+      "Paragraph Writing",
+      "Higher Education",
+      "Career",
+      "English Composition"
+    ],
+    "difficulty": "MEDIUM"
+  }
+]
