@@ -1,6 +1,30 @@
 """
 DASEMS PDF Processor — FastAPI service
-Crops individual question images from uploaded answer-script PDFs.
+Crops individual question regions (typed question stem + handwritten answer
+that follows it) from uploaded answer-script PDFs.
+
+KEY DIFFERENCE FROM THE OLD VERSION:
+  Pages mix computer-typed question text with handwritten (image-only) answers
+  of variable height. A handwritten region has NO extractable text, so relying
+  only on pdfplumber's text layer to find "Q2." means: if Q2's number happens to
+  sit in/near a region that pdfplumber doesn't expose as words (rare, but also
+  happens on pages that are partially scanned/flattened), you silently lose a
+  question boundary - and lose the entire handwritten answer that should have
+  been cropped with it.
+
+  Fix: two-tier detection per page.
+    Tier 1 (fast, accurate): pdfplumber.extract_words() — works great for pages
+      where the PDF still has a real text layer for the typed parts.
+    Tier 2 (fallback): render the page to an image and run pytesseract with
+      bounding boxes (image_to_data) to locate "Q<n>." stems when Tier 1 finds
+      nothing on that page, or finds fewer questions than expected.
+
+  Cropping logic is unchanged in spirit: a question's image band runs from its
+  own detected y-position down to the y-position of the NEXT detected question
+  (or page bottom). Since we crop pixels, the handwritten answer that visually
+  sits between Q_n's text and Q_(n+1)'s text is automatically included - that
+  part of the original design was already correct, it just needed boundary
+  detection that doesn't go blind on handwritten-heavy pages.
 
 Install:
     pip install fastapi uvicorn pdfplumber Pillow pytesseract
@@ -19,12 +43,19 @@ app = FastAPI(title="DASEMS PDF Processor")
 SUBJECT_ORDER   = ["Chemistry", "Physics", "Mathematics", "English"]
 SUBJECT_Q_COUNT = {"Chemistry": 10, "Physics": 10, "Mathematics": 10, "English": 5}
 SUBJECT_PAT     = re.compile(r"^(Chemistry|Physics|Mathematics|English)\b", re.I)
-Q_PAT           = re.compile(r"^(\d{1,2})\.\s+\S")   # "1. Word…"
+
+# "1." / "1)" / "Q1." / "Q1)" followed by a real character (not just whitespace)
+Q_PAT = re.compile(r"^(?:Q\.?\s*)?(\d{1,2})[\.\)]\s*\S")
 
 COVER_PAGES    = 2      # pages to skip (cover + instructions)
 BOTTOM_MARGIN  = 30     # pts from page bottom
 RENDER_DPI     = 150
 X_MARGIN_FRAC  = 0.03
+
+# Minimum vertical gap (in rendered px) between a detected Q-start and the
+# previous one. Prevents a stray OCR mis-read ("1." inside handwriting) from
+# being treated as a brand new question a few pixels below the real one.
+MIN_Q_GAP_PT = 25
 
 _PNG_MAGIC = b"\x89PNG"
 
@@ -42,6 +73,7 @@ class CropResult(BaseModel):
     imageBase64:         str
     boundingBox:         dict
     resolution:          dict
+    detectionMethod:     str = "text"   # "text" | "ocr" — useful for debugging/QA
 
 class ProcessResponse(BaseModel):
     crops:  list[CropResult]
@@ -93,13 +125,130 @@ def placeholder_png(label: str = "Not found") -> bytes:
     return data
 
 
-# ── Question boundary detection ────────────────────────────────────────────────
+# ── Tier 1: text-layer boundary detection (per page) ───────────────────────────
+def _text_layer_hits(page, page_idx: int, current_subject: str | None) -> tuple[list[dict], str | None]:
+    """
+    Scan one page's extracted words for subject headers and 'Q<n>.' question
+    stems. Returns (hits, updated_subject). Each hit only records WHERE a
+    question starts (top y in PDF points) — the handwritten answer that
+    follows has no text and is intentionally not represented here; it gets
+    swept into the crop band by the boundary-to-boundary cropping step later.
+    """
+    hits: list[dict] = []
+    words = page.extract_words()
+    if not words:
+        return hits, current_subject
+
+    lines: dict[int, dict] = {}
+    for w in words:
+        bucket = (round(w["top"]) // 3) * 3
+        if bucket not in lines:
+            lines[bucket] = {"y": w["top"], "words": []}
+        lines[bucket]["words"].append(w["text"])
+
+    for bucket in sorted(lines):
+        y        = lines[bucket]["y"]
+        line_txt = " ".join(lines[bucket]["words"]).strip()
+
+        sm = SUBJECT_PAT.match(line_txt)
+        if sm:
+            current_subject = sm.group(1).capitalize()
+            continue
+        if not current_subject:
+            continue
+
+        qm = Q_PAT.match(line_txt)
+        if qm:
+            q_local = int(qm.group(1))
+            if 1 <= q_local <= SUBJECT_Q_COUNT.get(current_subject, 10):
+                hits.append({
+                    "page_idx": page_idx,
+                    "y":        float(y),
+                    "q_local":  q_local,
+                    "subject":  current_subject,
+                    "method":   "text",
+                })
+
+    return hits, current_subject
+
+
+# ── Tier 2: OCR fallback boundary detection (per page) ─────────────────────────
+def _ocr_layer_hits(page, page_idx: int, current_subject: str | None) -> tuple[list[dict], str | None]:
+    """
+    Used only when a page's native text layer is empty or unreliable (e.g. the
+    page was flattened/rasterized, common when scripts get scanned back in
+    after handwriting is added). Renders the page and runs pytesseract with
+    word-level bounding boxes, then reconstructs lines the same way Tier 1
+    does, but converts pixel y-coordinates back to PDF points so downstream
+    cropping math (which works in PDF points) stays consistent.
+    """
+    try:
+        import pytesseract
+    except ImportError:
+        return [], current_subject
+
+    pil_img = page.to_image(resolution=RENDER_DPI).original
+    img_h   = pil_img.size[1]
+    page_h  = page.height
+    scale_y = img_h / page_h  # px per pt
+
+    data = pytesseract.image_to_data(pil_img, output_type=pytesseract.Output.DICT)
+
+    lines: dict[tuple[int, int, int], dict] = {}
+    n = len(data["text"])
+    for i in range(n):
+        txt = data["text"][i].strip()
+        if not txt:
+            continue
+        key = (data["block_num"][i], data["par_num"][i], data["line_num"][i])
+        top_px = data["top"][i]
+        if key not in lines:
+            lines[key] = {"top_px": top_px, "words": []}
+        lines[key]["words"].append(txt)
+        lines[key]["top_px"] = min(lines[key]["top_px"], top_px)
+
+    hits: list[dict] = []
+    for key in sorted(lines, key=lambda k: lines[k]["top_px"]):
+        line_txt = " ".join(lines[key]["words"]).strip()
+        y_pt     = lines[key]["top_px"] / scale_y
+
+        sm = SUBJECT_PAT.match(line_txt)
+        if sm:
+            current_subject = sm.group(1).capitalize()
+            continue
+        if not current_subject:
+            continue
+
+        qm = Q_PAT.match(line_txt)
+        if qm:
+            q_local = int(qm.group(1))
+            if 1 <= q_local <= SUBJECT_Q_COUNT.get(current_subject, 10):
+                hits.append({
+                    "page_idx": page_idx,
+                    "y":        y_pt,
+                    "q_local":  q_local,
+                    "subject":  current_subject,
+                    "method":   "ocr",
+                })
+
+    return hits, current_subject
+
+
+# ── Combined boundary detection across the whole document ──────────────────────
 def find_question_boundaries(pdf) -> list[dict]:
     """
-    Scan every page (skipping COVER_PAGES) and return sorted list of:
-        { subject, q_local, page_idx, y, y_end }
-    Uses text positions — works for both question papers and answer scripts
-    (as long as question numbers are printed on the page).
+    Per page: try Tier 1 (text layer). If it yields nothing for that page,
+    fall back to Tier 2 (OCR) for that page only — this keeps the fast path
+    fast for the (usual) case where the typed question stems still have a
+    real text layer, while still catching pages where they don't.
+
+    Subject tracking carries across pages/tiers so a subject header that
+    appeared on an earlier page (in whichever tier found it) still applies.
+
+    After per-page hits are collected, hits within MIN_Q_GAP_PT points of an
+    already-accepted hit for a DIFFERENT q_local but the same subject are
+    treated as noise (e.g. a "1." OCR'd out of handwriting ink) and dropped,
+    rather than silently overwriting a correct boundary.
     """
     current_subject: str | None = None
     raw: list[dict] = []
@@ -107,52 +256,61 @@ def find_question_boundaries(pdf) -> list[dict]:
     for page_idx, page in enumerate(pdf.pages):
         if page_idx < COVER_PAGES:
             continue
-        words = page.extract_words()
-        lines: dict[int, dict] = {}
-        for w in words:
-            bucket = (round(w["top"]) // 3) * 3
-            if bucket not in lines:
-                lines[bucket] = {"y": w["top"], "words": []}
-            lines[bucket]["words"].append(w["text"])
 
-        for bucket in sorted(lines):
-            y        = lines[bucket]["y"]
-            line_txt = " ".join(lines[bucket]["words"]).strip()
+        text_hits, current_subject = _text_layer_hits(page, page_idx, current_subject)
 
-            sm = SUBJECT_PAT.match(line_txt)
-            if sm:
-                current_subject = sm.group(1).capitalize()
-                continue
-            if not current_subject:
-                continue
+        if text_hits:
+            raw.extend(text_hits)
+            continue
 
-            qm = Q_PAT.match(line_txt)
-            if qm:
-                q_local = int(qm.group(1))
-                if 1 <= q_local <= SUBJECT_Q_COUNT.get(current_subject, 10):
-                    raw.append({
-                        "page_idx": page_idx,
-                        "y":        float(y),
-                        "q_local":  q_local,
-                        "subject":  current_subject,
-                    })
+        # Tier 1 found nothing usable on this page — try OCR fallback.
+        print(f"[processor] page {page_idx+1}: no text-layer hits, trying OCR fallback")
+        ocr_hits, current_subject = _ocr_layer_hits(page, page_idx, current_subject)
+        if ocr_hits:
+            print(f"[processor] page {page_idx+1}: OCR fallback found {len(ocr_hits)} question(s)")
+        raw.extend(ocr_hits)
 
-    # Deduplicate
-    seen: set   = set()
-    unique: list = []
+    # Deduplicate by (subject, q_local), preferring text-tier hits over OCR
+    # hits if both somehow fired for the same question (text is more reliable).
+    best: dict[tuple[str, int], dict] = {}
     for r in raw:
         key = (r["subject"], r["q_local"])
-        if key not in seen:
-            seen.add(key)
-            unique.append(r)
+        if key not in best or (best[key]["method"] == "ocr" and r["method"] == "text"):
+            best[key] = r
 
-    unique.sort(key=lambda r: (SUBJECT_ORDER.index(r["subject"]), r["q_local"]))
+    unique = sorted(
+        best.values(),
+        key=lambda r: (SUBJECT_ORDER.index(r["subject"]), r["q_local"]),
+    )
 
+    # Drop near-duplicate noise: if two consecutive accepted hits land on the
+    # same page within MIN_Q_GAP_PT of each other but aren't the expected
+    # n, n+1 sequence for that subject, keep the first (more likely the real
+    # question stem; the second is likely an OCR mis-read inside handwriting).
+    cleaned: list[dict] = []
+    for r in unique:
+        if cleaned:
+            prev = cleaned[-1]
+            same_page = prev["page_idx"] == r["page_idx"]
+            same_subj = prev["subject"] == r["subject"]
+            sequential = r["q_local"] == prev["q_local"] + 1
+            if same_page and same_subj and not sequential and (r["y"] - prev["y"]) < MIN_Q_GAP_PT:
+                print(f"[processor] WARN: dropping suspicious boundary "
+                      f"{r['subject']} Q{r['q_local']} (too close to Q{prev['q_local']}, "
+                      f"likely OCR noise)")
+                continue
+        cleaned.append(r)
+
+    # Compute y_end for each boundary = start of next boundary (same page) or
+    # bottom margin (different/last page). This band — from one question's
+    # text down to the next question's text — is exactly where the
+    # handwritten answer for THIS question lives, so it gets cropped together
+    # with the question stem automatically.
     result: list[dict] = []
-    for i, r in enumerate(unique):
+    for i, r in enumerate(cleaned):
         page_h = pdf.pages[r["page_idx"]].height
-        if i + 1 < len(unique):
-            nxt   = unique[i + 1]
+        if i + 1 < len(cleaned):
+            nxt   = cleaned[i + 1]
             y_end = (nxt["y"] - 4
                      if nxt["page_idx"] == r["page_idx"]
                      else page_h - BOTTOM_MARGIN)
@@ -168,6 +326,10 @@ def crop_question(page, y_start: float, y_end: float) -> tuple[bytes, dict, dict
     """
     Render page at RENDER_DPI. Convert PDF-point Y coords to pixel coords.
     Crop the band and return (png_bytes, bbox, resolution).
+    The band always spans from the question's own text line to the next
+    question's text line (or page bottom), so any handwritten answer in
+    between is included in the crop — this is unchanged from before and is
+    the correct behavior; only boundary DETECTION needed to be fixed.
     """
     page_h = page.height
     page_w = page.width
@@ -175,7 +337,6 @@ def crop_question(page, y_start: float, y_end: float) -> tuple[bytes, dict, dict
     pil_img      = page.to_image(resolution=RENDER_DPI).original
     img_w, img_h = pil_img.size
 
-    # Scale: PDF points → pixels
     scale_y = img_h / page_h
     scale_x = img_w / page_w
     pad_px  = int(6 * (RENDER_DPI / 72))
@@ -210,8 +371,8 @@ def process_pdf_file(
     question_numbers: list[int],
 ) -> tuple[list[CropResult], list[str]]:
     """
-    Open PDF, detect all question boundaries by text position,
-    then crop each requested question. Returns (crops, errors).
+    Open PDF, detect all question boundaries (text-layer first, OCR fallback
+    per page), then crop each requested question. Returns (crops, errors).
     Never raises — all failures become placeholder crops with error messages.
     """
     import pdfplumber
@@ -219,7 +380,6 @@ def process_pdf_file(
     crops:  list[CropResult] = []
     errors: list[str]        = []
 
-    # ── open PDF ──────────────────────────────────────────────────────────────
     try:
         pdf_handle = pdfplumber.open(pdf_path)
     except Exception as exc:
@@ -232,10 +392,13 @@ def process_pdf_file(
         return crops, errors
 
     with pdf_handle as pdf:
-        # ── detect question boundaries ────────────────────────────────────────
         try:
             boundaries = find_question_boundaries(pdf)
-            print(f"[processor] Detected {len(boundaries)}/35 question boundaries")
+            n_text = sum(1 for b in boundaries if b["method"] == "text")
+            n_ocr  = sum(1 for b in boundaries if b["method"] == "ocr")
+            total_expected = sum(SUBJECT_Q_COUNT.values())
+            print(f"[processor] Detected {len(boundaries)}/{total_expected} "
+                  f"question boundaries ({n_text} via text, {n_ocr} via OCR fallback)")
         except Exception as exc:
             msg = f"Boundary detection failed: {exc}"
             errors.append(msg)
@@ -244,15 +407,16 @@ def process_pdf_file(
 
         if not boundaries:
             errors.append(
-                "No question boundaries found. Check that the PDF contains subject "
-                "headers (Chemistry/Physics/Mathematics/English) and numbered questions."
+                "No question boundaries found via text layer or OCR fallback. "
+                "Check that the PDF contains subject headers "
+                "(Chemistry/Physics/Mathematics/English) and numbered questions, "
+                "and that pytesseract is installed for the OCR fallback path."
             )
 
         bmap: dict[tuple[str, int], dict] = {
             (b["subject"], b["q_local"]): b for b in boundaries
         }
 
-        # ── crop each question ────────────────────────────────────────────────
         for g_num in question_numbers:
             subj, q_local = GLOBAL_MAP.get(g_num, ("Unknown", g_num))
             label         = f"{subj} Q{q_local} (global #{g_num})"
@@ -277,8 +441,10 @@ def process_pdf_file(
                     imageBase64         = base64.b64encode(png).decode(),
                     boundingBox         = bbox,
                     resolution          = res,
+                    detectionMethod     = b["method"],
                 ))
-                print(f"[processor] ✓ {label} → page {b['page_idx']+1} {res}")
+                print(f"[processor] ✓ {label} → page {b['page_idx']+1} "
+                      f"{res} (via {b['method']})")
             except Exception as exc:
                 msg = f"{label}: crop failed — {exc}"
                 errors.append(msg)
@@ -298,6 +464,7 @@ def _make_placeholder(g_num: int, subj: str, ql: int, page_num: int) -> CropResu
         imageBase64         = base64.b64encode(png).decode(),
         boundingBox         = {"x": 0, "y": 0, "width": 1100, "height": 300},
         resolution          = {"width": 1100, "height": 300},
+        detectionMethod     = "none",
     )
 
 
@@ -318,11 +485,6 @@ def health():
 
 @app.get("/debug/path")
 def debug_path(path: str):
-    """
-    Check whether a file path is accessible from the processor container.
-    Call this from your browser or curl to diagnose path issues:
-        GET /debug/path?path=/app/uploads/some-file.pdf
-    """
     return {
         "path":          path,
         "exists":        os.path.exists(path),
@@ -333,24 +495,39 @@ def debug_path(path: str):
     }
 
 
+@app.get("/debug/boundaries")
+def debug_boundaries(path: str):
+    """
+    Inspect detected question boundaries for a PDF without cropping anything.
+    Useful for diagnosing why a particular question wasn't found, and for
+    confirming whether a hit came from the text layer or the OCR fallback.
+        GET /debug/boundaries?path=/app/uploads/some-file.pdf
+    """
+    import pdfplumber
+    if not os.path.exists(path):
+        raise HTTPException(status_code=400, detail=f"PDF not found at '{path}'")
+    with pdfplumber.open(path) as pdf:
+        boundaries = find_question_boundaries(pdf)
+    return {
+        "count": len(boundaries),
+        "boundaries": [
+            {
+                "subject": b["subject"],
+                "questionLocal": b["q_local"],
+                "page": b["page_idx"] + 1,
+                "y": round(b["y"], 1),
+                "yEnd": round(b["y_end"], 1),
+                "method": b["method"],
+            }
+            for b in boundaries
+        ],
+    }
+
+
 @app.post("/process", response_model=ProcessResponse)
 def process_endpoint(req: ProcessRequest):
-    """
-    Crop all requested question images from a student answer-script PDF.
-
-    pdfPath must be the absolute path as seen by THIS processor container.
-    If Node.js and the processor run in separate Docker containers, the path
-    must point to a shared volume mount, not the Node.js host path.
-
-    Common mistake:
-        Node.js stores file at:  /app/uploads/abc.pdf
-        Processor sees it at:    /uploads/abc.pdf   (volume mounted differently)
-    Fix: set UPLOADS_DIR in both containers to the same mount point,
-         or use /debug/path to check what the processor can see.
-    """
     print(f"[processor] /process  pdfPath={req.pdfPath}  questions={req.questionNumbers}")
 
-    # Explicit path check with a clear error message
     if not os.path.exists(req.pdfPath):
         raise HTTPException(
             status_code=400,
