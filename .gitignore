@@ -7,3 +7,5 @@ build/
 .DS_Store
 coverage/
 uploads/
+toRun.txt
+/apps/mobile

@@ -1,8 +1,40 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AdmissionExamDto, AdmissionSessionDto } from "@dasems/shared-types";
 import { api } from "../../../shared/api/client";
 import { AppLayout } from "../../../shared/components/layout/AppLayout";
+
+// ─── Local types for the mobile-assign panel ────────────────────────────────
+// (Matches what GET /students and GET /students/mobile-scripts return in
+// student.routes.ts — not imported from shared-types since those routes
+// return plain shapes rather than a shared DTO.)
+interface StudentRow {
+  id: string;
+  sessionId: string;
+  roll: string;
+  name: string;
+  faculty: string;
+  departmentId: string;
+  sCode: string;
+  processingStatus: string;
+  scriptId?: string;
+  scriptStatus?: string;
+  scriptUrl?: string;
+}
+
+interface MobileScriptRow {
+  id: string;
+  roll_number: string;
+  exam_name: string;
+  // Mobile app is PDF-only now — no more "images" capture flow — but we
+  // keep this as `string` rather than a literal union so old rows from
+  // before that change (if any) don't break type-checking here.
+  file_type: string;
+  file_paths: string[];
+  file_urls: string[];
+  status: string;
+  created_at: string;
+}
 
 export function SessionsPage() {
   const queryClient = useQueryClient();
@@ -112,7 +144,7 @@ export function SessionsPage() {
         {isLoading ? (
           <p className="text-text-muted">Loading...</p>
         ) : (
-          <table className="data-table">
+          <table className="data-table mb-10">
             <thead>
               <tr>
                 <th>ID</th>
@@ -135,7 +167,224 @@ export function SessionsPage() {
             </tbody>
           </table>
         )}
+
+        {/* <MobileScriptAssignPanel sessions={sessions ?? []} /> */}
       </div>
     </AppLayout>
   );
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  MOBILE SCRIPT ASSIGN PANEL
+//  Lists roll+PDF submissions from the mobile app (Supabase-backed) and lets
+//  the admin match each one to a student in a chosen session, then assign it.
+// ─────────────────────────────────────────────────────────────────────────────
+// function MobileScriptAssignPanel({
+//   sessions,
+// }: {
+//   sessions: AdmissionSessionDto[];
+// }) {
+//   const queryClient = useQueryClient();
+//   const [sessionId, setSessionId] = useState("");
+//   // Per-row manual override: mobileScriptId -> studentId
+//   const [overrides, setOverrides] = useState<Record<string, string>>({});
+
+//   const { data: students } = useQuery({
+//     queryKey: ["students", sessionId],
+//     queryFn: () => api.get<StudentRow[]>(`/students?sessionId=${sessionId}`),
+//     enabled: !!sessionId,
+//   });
+
+//   const { data: mobileScripts, isLoading: loadingMobile } = useQuery({
+//     queryKey: ["mobile-scripts"],
+//     queryFn: () =>
+//       api.get<MobileScriptRow[]>("/students/mobile-scripts?status=pending"),
+//     // Pending uploads can arrive at any time from the mobile app, so poll.
+//     refetchInterval: 15000,
+//   });
+
+//   const assignMutation = useMutation({
+//     mutationFn: ({
+//       studentId,
+//       mobileScriptId,
+//     }: {
+//       studentId: string;
+//       mobileScriptId: string;
+//     }) =>
+//       api.post(`/students/${studentId}/assign-mobile-script`, {
+//         mobileScriptId,
+//       }),
+//     onSuccess: () => {
+//       queryClient.invalidateQueries({ queryKey: ["mobile-scripts"] });
+//       queryClient.invalidateQueries({ queryKey: ["students", sessionId] });
+//     },
+//   });
+
+//   const discardMutation = useMutation({
+//     mutationFn: (mobileScriptId: string) =>
+//       api.delete(`/students/mobile-scripts/${mobileScriptId}`),
+//     onSuccess: () =>
+//       queryClient.invalidateQueries({ queryKey: ["mobile-scripts"] }),
+//   });
+
+//   // Auto-match each pending upload to a student in the selected session by
+//   // roll number (case/whitespace-insensitive). Falls back to the admin's
+//   // manual dropdown pick stored in `overrides`.
+//   const matchedStudentIdFor = useMemo(() => {
+//     const byRoll = new Map<string, StudentRow>();
+//     (students ?? []).forEach((st) =>
+//       byRoll.set(st.roll.trim().toUpperCase(), st),
+//     );
+//     return (row: MobileScriptRow): string => {
+//       if (overrides[row.id]) return overrides[row.id];
+//       const match = byRoll.get(row.roll_number.trim().toUpperCase());
+//       return match?.id ?? "";
+//     };
+//   }, [students, overrides]);
+
+//   return (
+//     <div className="panel p-4">
+//       <div className="flex items-center justify-between mb-4">
+//         <h2 className="text-lg font-semibold">
+//           Mobile Uploads — Assign to Student
+//         </h2>
+//         <div className="w-64">
+//           <select
+//             className="input-field"
+//             value={sessionId}
+//             onChange={(e) => setSessionId(e.target.value)}
+//           >
+//             <option value="">Select session to match against...</option>
+//             {sessions.map((s) => (
+//               <option key={s.id} value={s.id}>
+//                 {s.name}
+//               </option>
+//             ))}
+//           </select>
+//         </div>
+//       </div>
+
+//       {!sessionId && (
+//         <p className="text-text-muted text-sm">
+//           Pick a session above so uploaded roll numbers can be matched to its
+//           students.
+//         </p>
+//       )}
+
+//       {loadingMobile ? (
+//         <p className="text-text-muted">Loading mobile uploads...</p>
+//       ) : mobileScripts && mobileScripts.length > 0 ? (
+//         <table className="data-table">
+//           <thead>
+//             <tr>
+//               <th>Roll</th>
+//               <th>Exam</th>
+//               <th>Submitted</th>
+//               <th>PDF</th>
+//               <th>Match student</th>
+//               <th>Actions</th>
+//             </tr>
+//           </thead>
+//           <tbody>
+//             {mobileScripts.map((row) => {
+//               const matchedId = matchedStudentIdFor(row);
+//               const isAssigning =
+//                 assignMutation.isPending &&
+//                 assignMutation.variables?.mobileScriptId === row.id;
+//               const isDiscarding =
+//                 discardMutation.isPending &&
+//                 discardMutation.variables === row.id;
+//               const pdfUrl = row.file_urls[0];
+
+//               return (
+//                 <tr key={row.id}>
+//                   <td className="font-mono">{row.roll_number}</td>
+//                   <td>{row.exam_name}</td>
+//                   <td className="text-xs text-text-muted">
+//                     {new Date(row.created_at).toLocaleString()}
+//                   </td>
+//                   <td>
+//                     {pdfUrl ? (
+//                       <a
+//                         href={pdfUrl}
+//                         target="_blank"
+//                         rel="noreferrer"
+//                         className="text-accent underline text-sm"
+//                       >
+//                         View PDF
+//                       </a>
+//                     ) : (
+//                       <span className="text-xs text-danger">
+//                         No file attached
+//                       </span>
+//                     )}
+//                   </td>
+//                   <td>
+//                     <select
+//                       className="input-field"
+//                       value={matchedId}
+//                       disabled={!sessionId}
+//                       onChange={(e) =>
+//                         setOverrides((prev) => ({
+//                           ...prev,
+//                           [row.id]: e.target.value,
+//                         }))
+//                       }
+//                     >
+//                       <option value="">
+//                         {sessionId
+//                           ? "Select student..."
+//                           : "Pick a session first"}
+//                       </option>
+//                       {students?.map((st) => (
+//                         <option key={st.id} value={st.id}>
+//                           {st.roll} — {st.name}
+//                         </option>
+//                       ))}
+//                     </select>
+//                     {matchedId && !overrides[row.id] && (
+//                       <span className="text-xs text-success ml-1">
+//                         auto-matched
+//                       </span>
+//                     )}
+//                   </td>
+//                   <td className="whitespace-nowrap">
+//                     <button
+//                       className="btn-primary mr-2"
+//                       disabled={!matchedId || !pdfUrl || isAssigning}
+//                       onClick={() =>
+//                         assignMutation.mutate({
+//                           studentId: matchedId,
+//                           mobileScriptId: row.id,
+//                         })
+//                       }
+//                     >
+//                       {isAssigning ? "Assigning..." : "Assign"}
+//                     </button>
+//                     <button
+//                       className="btn-secondary"
+//                       disabled={isDiscarding}
+//                       onClick={() => {
+//                         if (
+//                           confirm(
+//                             `Discard the upload for roll ${row.roll_number}? This deletes the file.`,
+//                           )
+//                         ) {
+//                           discardMutation.mutate(row.id);
+//                         }
+//                       }}
+//                     >
+//                       {isDiscarding ? "Discarding..." : "Discard"}
+//                     </button>
+//                   </td>
+//                 </tr>
+//               );
+//             })}
+//           </tbody>
+//         </table>
+//       ) : (
+//         <p className="text-text-muted text-sm">No pending mobile uploads.</p>
+//       )}
+//     </div>
+//   );
+// }
