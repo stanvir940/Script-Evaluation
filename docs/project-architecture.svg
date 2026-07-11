@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1100" viewBox="0 0 1800 1100">
+  <rect width="1800" height="1100" fill="#f8fafc"/>
+  <rect x="40" y="30" width="1720" height="1040" rx="24" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"/>
+  <text x="90" y="90" font-family="Arial, Helvetica, sans-serif" font-size="34" font-weight="700" fill="#0f172a">Script Evaluation System Architecture</text>
+  <text x="90" y="125" font-family="Arial, Helvetica, sans-serif" font-size="18" fill="#475569">High-level overview of the web, mobile, API, processor, and data layers.</text>
+
+  <rect x="90" y="180" width="300" height="150" rx="18" fill="#dbeafe" stroke="#60a5fa" stroke-width="2"/>
+  <text x="140" y="225" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="700" fill="#1d4ed8">Users</text>
+  <text x="125" y="262" font-family="Arial, Helvetica, sans-serif" font-size="18" fill="#1e3a8a">Examiners</text>
+  <text x="125" y="290" font-family="Arial, Helvetica, sans-serif" font-size="18" fill="#1e3a8a">Students / Admins</text>
+
+  <rect x="470" y="180" width="300" height="150" rx="18" fill="#dcfce7" stroke="#4ade80" stroke-width="2"/>
+  <text x="535" y="225" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="700" fill="#15803d">Web App</text>
+  <text x="500" y="262" font-family="Arial, Helvetica, sans-serif" font-size="18" fill="#166534">React + Vite + Tailwind</text>
+  <text x="500" y="290" font-family="Arial, Helvetica, sans-serif" font-size="18" fill="#166534">Dashboard, evaluation UI</text>
+
+  <rect x="850" y="180" width="300" height="150" rx="18" fill="#fef3c7" stroke="#f59e0b" stroke-width="2"/>
+  <text x="900" y="225" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="700" fill="#b45309">Mobile App</text>
+  <text x="875" y="262" font-family="Arial, Helvetica, sans-serif" font-size="18" fill="#92400e">React Native / Expo</text>
+  <text x="875" y="290" font-family="Arial, Helvetica, sans-serif" font-size="18" fill="#92400e">Mobile workflows</text>
+
+  <rect x="1230" y="180" width="300" height="150" rx="18" fill="#ede9fe" stroke="#8b5cf6" stroke-width="2"/>
+  <text x="1285" y="225" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="700" fill="#6d28d9">Shared Types</text>
+  <text x="1265" y="262" font-family="Arial, Helvetica, sans-serif" font-size="18" fill="#5b21b6">Common schemas/models</text>
+  <text x="1265" y="290" font-family="Arial, Helvetica, sans-serif" font-size="18" fill="#5b21b6">Used by web/mobile/API</text>
+
+  <line x1="390" y1="255" x2="470" y2="255" stroke="#64748b" stroke-width="3" marker-end="url(#arrow)"/>
+  <line x1="770" y1="255" x2="850" y2="255" stroke="#64748b" stroke-width="3" marker-end="url(#arrow)"/>
+  <line x1="1150" y1="255" x2="1230" y2="255" stroke="#64748b" stroke-width="3" marker-end="url(#arrow)"/>
+
+  <rect x="420" y="430" width="420" height="260" rx="22" fill="#f1f5f9" stroke="#64748b" stroke-width="2"/>
+  <text x="470" y="485" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="700" fill="#334155">API Backend</text>
+  <text x="470" y="525" font-family="Arial, Helvetica, sans-serif" font-size="19" fill="#475569">Node / TypeScript service</text>
+  <text x="470" y="555" font-family="Arial, Helvetica, sans-serif" font-size="19" fill="#475569">Authentication, routes, models</text>
+  <text x="470" y="585" font-family="Arial, Helvetica, sans-serif" font-size="19" fill="#475569">Evaluation workflow orchestration</text>
+
+  <rect x="910" y="430" width="420" height="260" rx="22" fill="#fff7ed" stroke="#fb923c" stroke-width="2"/>
+  <text x="960" y="485" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="700" fill="#9a2c00">Processor Service</text>
+  <text x="960" y="525" font-family="Arial, Helvetica, sans-serif" font-size="19" fill="#c2410c">FastAPI + Python</text>
+  <text x="960" y="555" font-family="Arial, Helvetica, sans-serif" font-size="19" fill="#c2410c">PDF/question boundary detection</text>
+  <text x="960" y="585" font-family="Arial, Helvetica, sans-serif" font-size="19" fill="#c2410c">OCR + image crop pipeline</text>
+
+  <line x1="620" y1="330" x2="620" y2="430" stroke="#64748b" stroke-width="3" marker-end="url(#arrow)"/>
+  <line x1="1120" y1="330" x2="1120" y2="430" stroke="#64748b" stroke-width="3" marker-end="url(#arrow)"/>
+  <line x1="840" y1="560" x2="910" y2="560" stroke="#64748b" stroke-width="3" marker-end="url(#arrow)"/>
+
+  <rect x="420" y="760" width="540" height="220" rx="22" fill="#ecfeff" stroke="#22d3ee" stroke-width="2"/>
+  <text x="470" y="815" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="700" fill="#0f766e">Data Layer</text>
+  <text x="470" y="855" font-family="Arial, Helvetica, sans-serif" font-size="19" fill="#115e59">MongoDB</text>
+  <text x="470" y="885" font-family="Arial, Helvetica, sans-serif" font-size="19" fill="#115e59">File storage / uploads</text>
+  <text x="470" y="915" font-family="Arial, Helvetica, sans-serif" font-size="19" fill="#115e59">Evaluation results and documents</text>
+
+  <rect x="1040" y="760" width="390" height="220" rx="22" fill="#fef2f2" stroke="#f43f5e" stroke-width="2"/>
+  <text x="1090" y="815" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="700" fill="#be123c">Infrastructure</text>
+  <text x="1090" y="855" font-family="Arial, Helvetica, sans-serif" font-size="19" fill="#9f1239">Docker Compose</text>
+  <text x="1090" y="885" font-family="Arial, Helvetica, sans-serif" font-size="19" fill="#9f1239">Local services and containers</text>
+  <text x="1090" y="915" font-family="Arial, Helvetica, sans-serif" font-size="19" fill="#9f1239">Dev / test environment</text>
+
+  <line x1="630" y1="690" x2="630" y2="760" stroke="#64748b" stroke-width="3" marker-end="url(#arrow)"/>
+  <line x1="1120" y1="690" x2="1120" y2="760" stroke="#64748b" stroke-width="3" marker-end="url(#arrow)"/>
+  <line x1="840" y1="870" x2="1040" y2="870" stroke="#64748b" stroke-width="3" marker-end="url(#arrow)"/>
+
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#64748b"/>
+    </marker>
+  </defs>
+</svg>

@@ -1,0 +1,27 @@
+docker ps
+CONTAINER ID   IMAGE     NAMES
+2a8f3e4d1abc   mongo:7   dasems-mongodb-1
+
+docker exec -it evaluation-mongodb-1 mongosh
+show dbs
+
+use admission_eval
+
+show collections
+
+db.users.find()
+
+db.users.find().pretty()
+
+use admissio_eval
+
+use admission_eval
+
+show collections
+
+db.users.find().pretty()
+
+db.getCollectionNames()
+
+db.stats()
+

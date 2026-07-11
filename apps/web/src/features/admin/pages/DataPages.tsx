@@ -16,6 +16,15 @@ interface StudentUploadRow {
   departmentId: string;
 }
 
+interface MeritRow {
+  roll: string;
+  name: string;
+  sCode: string;
+  totalObtained: number;
+  totalPossible: number;
+  percentage: number;
+}
+
 interface ParsedStudentRow extends StudentUploadRow {
   rowNumber: number;
 }
@@ -833,26 +842,120 @@ export function StudentsPage() {
   );
 }
 
+// export function ResultsPage() {
+//   const [sessionId, setSessionId] = useState("");
+
+//   const exportCsv = () => {
+//     window.open(`/api/v1/results/export/csv?sessionId=${sessionId}`, "_blank");
+//   };
+
+//   return (
+//     <AppLayout>
+//       <div className="p-6 max-w-2xl">
+//         <h1 className="text-xl font-semibold mb-6">Results & Export</h1>
+//         <div className="mb-4">
+//           <label className="block text-sm font-medium mb-1">Session ID</label>
+//           <input
+//             className="input-field"
+//             value={sessionId}
+//             onChange={(e) => setSessionId(e.target.value)}
+//           />
+//         </div>
+//         <div className="flex gap-3">
+//           <button
+//             type="button"
+//             onClick={exportCsv}
+//             className="btn-primary"
+//             disabled={!sessionId}
+//           >
+//             Export CSV
+//           </button>
+//           <button
+//             type="button"
+//             className="btn-secondary"
+//             disabled={!sessionId}
+//             onClick={() => api.post("/results/publish", { sessionId })}
+//           >
+//             Publish Results
+//           </button>
+//         </div>
+//       </div>
+//     </AppLayout>
+//   );
+// }
+
 export function ResultsPage() {
   const [sessionId, setSessionId] = useState("");
+  const [results, setResults] = useState<MeritRow[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  // const fetchResults = async () => {
+  //   if (!sessionId) return;
+  //   setLoading(true);
+  //   setError("");
+  //   try {
+  //     const res = await api.get(`/results/merit-list?sessionId=${sessionId}`);
+  //     setResults(res.data.data as MeritRow[]);
+  //   } catch (err) {
+  //     setError("Failed to load results. Check the session ID and try again.");
+  //     setResults([]);
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
+
+  const fetchResults = async () => {
+    if (!sessionId) return;
+    setLoading(true);
+    setError("");
+    try {
+      const res = await api.get<MeritRow[]>(
+        `/results/merit-list?sessionId=${sessionId}`,
+      );
+      setResults(res);
+    } catch (err) {
+      setError("Failed to load results. Check the session ID and try again.");
+      setResults([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const exportCsv = () => {
     window.open(`/api/v1/results/export/csv?sessionId=${sessionId}`, "_blank");
   };
 
+  const publish = async () => {
+    await api.post("/results/publish", { sessionId });
+    fetchResults(); // refresh after publishing
+  };
+
   return (
     <AppLayout>
-      <div className="p-6 max-w-2xl">
+      <div className="p-6 max-w-4xl">
         <h1 className="text-xl font-semibold mb-6">Results & Export</h1>
-        <div className="mb-4">
-          <label className="block text-sm font-medium mb-1">Session ID</label>
-          <input
-            className="input-field"
-            value={sessionId}
-            onChange={(e) => setSessionId(e.target.value)}
-          />
+
+        <div className="mb-4 flex gap-3 items-end">
+          <div>
+            <label className="block text-sm font-medium mb-1">Session ID</label>
+            <input
+              className="input-field"
+              value={sessionId}
+              onChange={(e) => setSessionId(e.target.value)}
+            />
+          </div>
+          <button
+            type="button"
+            onClick={fetchResults}
+            className="btn-secondary"
+            disabled={!sessionId || loading}
+          >
+            {loading ? "Loading..." : "Load Results"}
+          </button>
         </div>
-        <div className="flex gap-3">
+
+        <div className="flex gap-3 mb-6">
           <button
             type="button"
             onClick={exportCsv}
@@ -865,11 +968,46 @@ export function ResultsPage() {
             type="button"
             className="btn-secondary"
             disabled={!sessionId}
-            onClick={() => api.post("/results/publish", { sessionId })}
+            onClick={publish}
           >
             Publish Results
           </button>
         </div>
+
+        {error && <p className="text-red-600 mb-4">{error}</p>}
+
+        {results.length > 0 && (
+          <table className="w-full border-collapse text-sm">
+            <thead>
+              <tr className="border-b text-left">
+                <th className="py-2 pr-4">Roll</th>
+                <th className="py-2 pr-4">Name</th>
+                <th className="py-2 pr-4">S. Code</th>
+                <th className="py-2 pr-4">Obtained</th>
+                <th className="py-2 pr-4">Total</th>
+                <th className="py-2 pr-4">%</th>
+              </tr>
+            </thead>
+            <tbody>
+              {results.map((r, i) => (
+                <tr key={`${r.roll}-${i}`} className="border-b">
+                  <td className="py-2 pr-4">{r.roll}</td>
+                  <td className="py-2 pr-4">{r.name}</td>
+                  <td className="py-2 pr-4">{r.sCode}</td>
+                  <td className="py-2 pr-4">{r.totalObtained}</td>
+                  <td className="py-2 pr-4">{r.totalPossible}</td>
+                  <td className="py-2 pr-4">{r.percentage}%</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+
+        {results.length === 0 && !loading && sessionId && !error && (
+          <p className="text-gray-500">
+            No results loaded yet. Click "Load Results".
+          </p>
+        )}
       </div>
     </AppLayout>
   );

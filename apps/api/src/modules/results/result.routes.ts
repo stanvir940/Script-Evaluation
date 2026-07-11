@@ -20,6 +20,43 @@ import {
 
 const router = Router();
 
+// async function syncResults(sessionId: string) {
+//   const finalized = await Answer.find({
+//     sessionId: new Types.ObjectId(sessionId),
+//     status: "FINALIZED",
+//     finalMark: { $exists: true },
+//   });
+
+//   for (const answer of finalized) {
+//     const questions = await Question.find({
+//       sessionId,
+//       subjectId: answer.subjectId,
+//     });
+//     const totalMarks = questions.reduce((s, q) => s + q.maxMarks, 0);
+
+//     await Result.findOneAndUpdate(
+//       {
+//         sessionId: answer.sessionId,
+//         studentId: answer.studentId,
+//         subjectId: answer.subjectId,
+//       },
+//       {
+//         sCode: answer.sCode,
+//         totalMarks,
+//         obtainedMarks: answer.finalMark,
+//       },
+//       { upsert: true },
+//     );
+//   }
+// }
+
+interface ResultGroup {
+  studentId: Types.ObjectId;
+  subjectId: Types.ObjectId;
+  sCode: string;
+  sum: number;
+}
+
 async function syncResults(sessionId: string) {
   const finalized = await Answer.find({
     sessionId: new Types.ObjectId(sessionId),
@@ -27,23 +64,44 @@ async function syncResults(sessionId: string) {
     finalMark: { $exists: true },
   });
 
+  const groups = new Map<string, ResultGroup>();
+
   for (const answer of finalized) {
-    const questions = await Question.find({
-      sessionId,
+    const key = `${answer.studentId}_${answer.subjectId}`;
+    const g = groups.get(key) ?? {
+      studentId: answer.studentId,
       subjectId: answer.subjectId,
-    });
-    const totalMarks = questions.reduce((s, q) => s + q.maxMarks, 0);
+      sCode: answer.sCode,
+      sum: 0,
+    };
+    g.sum += answer.finalMark ?? 0;
+    groups.set(key, g);
+  }
+
+  const totalsCache = new Map<string, number>();
+
+  for (const g of groups.values()) {
+    const subjectKey = g.subjectId.toString();
+    let totalMarks = totalsCache.get(subjectKey);
+    if (totalMarks === undefined) {
+      const questions = await Question.find({
+        sessionId,
+        subjectId: g.subjectId,
+      });
+      totalMarks = questions.reduce((s, q) => s + q.maxMarks, 0);
+      totalsCache.set(subjectKey, totalMarks);
+    }
 
     await Result.findOneAndUpdate(
       {
-        sessionId: answer.sessionId,
-        studentId: answer.studentId,
-        subjectId: answer.subjectId,
+        sessionId: new Types.ObjectId(sessionId),
+        studentId: g.studentId,
+        subjectId: g.subjectId,
       },
       {
-        sCode: answer.sCode,
+        sCode: g.sCode,
         totalMarks,
-        obtainedMarks: answer.finalMark,
+        obtainedMarks: g.sum,
       },
       { upsert: true },
     );
