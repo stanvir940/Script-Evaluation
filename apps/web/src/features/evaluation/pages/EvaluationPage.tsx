@@ -10,7 +10,85 @@ import { api } from "../../../shared/api/client";
 import { AppLayout } from "../../../shared/components/layout/AppLayout";
 import { AnnotationCanvas } from "../components/AnnotationCanvas";
 
-function QuestionPanel({ workspace }: { workspace: EvaluationWorkspaceDto }) {
+// Shape of a single rubric line item, matching the JSON produced for each question:
+// { "context": "...", "value": number }
+interface RubricItem {
+  context: string;
+  value: number;
+}
+
+/**
+ * Renders the rubric as a simple table: Context | Value | toggle button.
+ * Clicking a row's button selects/deselects it. The set of selected values
+ * is summed and reported to the parent via onSelectionChange, which is
+ * responsible for writing the total into the Mark input. Nothing is
+ * submitted here — this only affects the local Mark field until Save/Submit
+ * is pressed.
+ */
+function RubricTable({
+  items,
+  selectedIndexes,
+  onToggle,
+}: {
+  items: RubricItem[];
+  selectedIndexes: Set<number>;
+  onToggle: (index: number) => void;
+}) {
+  if (!items || items.length === 0) return null;
+
+  return (
+    <table className="w-full text-sm border border-border">
+      <thead>
+        <tr className="bg-surface text-left">
+          <th className="p-2 border-b border-border font-medium">Context</th>
+          <th className="p-2 border-b border-border font-medium w-16 text-center">
+            Value
+          </th>
+          <th className="p-2 border-b border-border font-medium w-20 text-center">
+            Award
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        {items.map((item, index) => {
+          const selected = selectedIndexes.has(index);
+          return (
+            <tr key={index} className="border-b border-border last:border-0">
+              <td className="p-2 align-top">{item.context}</td>
+              <td className="p-2 align-top text-center">{item.value}</td>
+              <td className="p-2 align-top text-center">
+                <button
+                  type="button"
+                  onClick={() => onToggle(index)}
+                  className={
+                    selected
+                      ? "px-2 py-1 rounded bg-primary text-white text-xs"
+                      : "px-2 py-1 rounded border border-border text-xs hover:bg-surface"
+                  }
+                  aria-pressed={selected}
+                >
+                  {selected ? "Selected" : "Award"}
+                </button>
+              </td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+  );
+}
+
+function QuestionPanel({
+  workspace,
+  selectedRubricIndexes,
+  onToggleRubricItem,
+}: {
+  workspace: EvaluationWorkspaceDto;
+  selectedRubricIndexes: Set<number>;
+  onToggleRubricItem: (index: number) => void;
+}) {
+  const rubricItems: RubricItem[] = workspace.rubric?.items ?? [];
+
   return (
     <div className="h-full overflow-y-auto bg-white border-r border-border p-4 w-full md:w-[380px] shrink-0">
       <div className="mb-4 pb-4 border-b border-border">
@@ -29,9 +107,11 @@ function QuestionPanel({ workspace }: { workspace: EvaluationWorkspaceDto }) {
       </section>
       <section className="mb-4">
         <h3 className="text-lg font-semibold mb-2">Rubric</h3>
-        <p className="text-base text-text-secondary whitespace-pre-wrap">
-          {workspace.rubric}
-        </p>
+        <RubricTable
+          items={rubricItems}
+          selectedIndexes={selectedRubricIndexes}
+          onToggle={onToggleRubricItem}
+        />
       </section>
       <section className="mb-4">
         <h3 className="text-lg font-semibold mb-2">Model Answer</h3>
@@ -63,6 +143,37 @@ export function EvaluationPage() {
   const [error, setError] = useState("");
   const saveTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // Indexes of rubric items the evaluator has toggled "on" for the current
+  // question. Reset whenever the workspace changes.
+  const [selectedRubricIndexes, setSelectedRubricIndexes] = useState<
+    Set<number>
+  >(new Set());
+
+  const toggleRubricItem = useCallback(
+    (index: number) => {
+      if (!workspace) return;
+      const items: RubricItem[] = workspace.rubric?.items ?? [];
+
+      setSelectedRubricIndexes((prev) => {
+        const next = new Set(prev);
+        if (next.has(index)) {
+          next.delete(index);
+        } else {
+          next.add(index);
+        }
+
+        const total = items.reduce(
+          (sum, item, i) => (next.has(i) ? sum + item.value : sum),
+          0,
+        );
+        setMark(total.toString());
+
+        return next;
+      });
+    },
+    [workspace],
+  );
+
   const loadNext = useCallback(async () => {
     setLoading(true);
     setError("");
@@ -75,6 +186,7 @@ export function EvaluationPage() {
       setAnnotations(data?.annotations ?? []);
       setMark(data?.draftMark?.toString() ?? "");
       setComment(data?.draftComment ?? "");
+      setSelectedRubricIndexes(new Set());
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load");
     } finally {
@@ -138,6 +250,7 @@ export function EvaluationPage() {
       setAnnotations(result.next?.annotations ?? []);
       setMark(result.next?.draftMark?.toString() ?? "");
       setComment(result.next?.draftComment ?? "");
+      setSelectedRubricIndexes(new Set());
     } catch (err) {
       setError(err instanceof Error ? err.message : "Submit failed");
     } finally {
@@ -183,7 +296,11 @@ export function EvaluationPage() {
         {!loading && workspace && (
           <>
             <div className="flex flex-1 overflow-hidden flex-col md:flex-row">
-              <QuestionPanel workspace={workspace} />
+              <QuestionPanel
+                workspace={workspace}
+                selectedRubricIndexes={selectedRubricIndexes}
+                onToggleRubricItem={toggleRubricItem}
+              />
               <div className="flex-1 min-h-[300px]">
                 <AnnotationCanvas
                   imageUrl={workspace.answerImageUrl}

@@ -175,7 +175,7 @@ export function QuestionsPage() {
 
   const loadSampleJson = async () => {
     try {
-      const response = await fetch("/question-bank.json");
+      const response = await fetch("/question-bank2.json");
       if (!response.ok) throw new Error("Could not load sample JSON");
       const data = await response.json();
       setBulkPayload(JSON.stringify(data, null, 2));
