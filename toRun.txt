@@ -4,3 +4,7 @@ npm run dev
  uvicorn main:app --reload --port 5002 (some time port number can conflict)
  source /Users/tanvirahmed/Ht/Evaluation/.venv/bin/activate
  python3 main.py
+
+
+
+ ad
